@@ -2,6 +2,7 @@
 const TelegramBot = require('node-telegram-bot-api');
 const crypto = require('crypto');
 const fs = require('fs');
+const moment = require('moment-timezone');  // Import moment-timezone
 const storageFilePath = './storage.json';
 
 // Read storage file
@@ -40,6 +41,11 @@ const bot = new TelegramBot(token, { polling: true });
 // Load stored data on startup
 const fileStore = readStorage();
 let batchToken = null; // Temporary batch token for storing multiple files
+
+// Function to get the current time in GMT +5:30
+function getCurrentTime() {
+  return moment.tz('Asia/Kolkata').format('YYYY-MM-DD HH:mm:ss');  // Format in desired time zone
+}
 
 // Respond to a "/start" command or deep link
 bot.onText(/\/start(.*)/, (msg, match) => {
@@ -114,7 +120,7 @@ bot.onText(/\/batchfile/, (msg) => {
   restrictAdminCommand(msg, () => {
     const chatId = msg.chat.id;
     batchToken = crypto.randomBytes(16).toString('hex');
-    fileStore[batchToken] = { files: [], chatId, timestamp: new Date().toISOString() }; // Store the timestamp
+    fileStore[batchToken] = { files: [], chatId, timestamp: getCurrentTime() }; // Store the timestamp with GMT+5:30
     writeStorage(fileStore);
     bot.sendMessage(chatId, `Batch mode started! Use token: ${batchToken}. Send files to add them to this batch.`);
   });
@@ -142,7 +148,7 @@ bot.on('message', (msg) => {
       } else {
         // Single file handling
         const fileToken = crypto.randomBytes(16).toString('hex');
-        fileStore[fileToken] = { fileId, chatId, timestamp: new Date().toISOString() }; // Store the timestamp
+        fileStore[fileToken] = { fileId, chatId, timestamp: getCurrentTime() }; // Store the timestamp with GMT+5:30
         writeStorage(fileStore);
         bot.sendMessage(chatId, `Your file has been stored! Use this link to access it: https://t.me/${botUsername}?start=${fileToken}`);
       }
