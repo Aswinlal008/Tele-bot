@@ -82,7 +82,6 @@ bot.onText(/\/help/, (msg) => {
   bot.sendMessage(chatId, `Here are the commands I can assist you with:\n
 /start - Start the bot or access a file using a deep link\n
 /help - Get help with the bot's features\n
-/sharefile <token> - Get a shareable link for a file or batch (admin only)\n
 /deletefile <token> - Delete a stored file or batch (admin only)\n
 /listfiles - List all stored files or batches (admin only)`);
 });
@@ -115,7 +114,7 @@ bot.onText(/\/batchfile/, (msg) => {
   restrictAdminCommand(msg, () => {
     const chatId = msg.chat.id;
     batchToken = crypto.randomBytes(16).toString('hex');
-    fileStore[batchToken] = { files: [], chatId }; // Initialize batch
+    fileStore[batchToken] = { files: [], chatId, timestamp: new Date().toISOString() }; // Store the timestamp
     writeStorage(fileStore);
     bot.sendMessage(chatId, `Batch mode started! Use token: ${batchToken}. Send files to add them to this batch.`);
   });
@@ -143,7 +142,7 @@ bot.on('message', (msg) => {
       } else {
         // Single file handling
         const fileToken = crypto.randomBytes(16).toString('hex');
-        fileStore[fileToken] = { fileId, chatId };
+        fileStore[fileToken] = { fileId, chatId, timestamp: new Date().toISOString() }; // Store the timestamp
         writeStorage(fileStore);
         bot.sendMessage(chatId, `Your file has been stored! Use this link to access it: https://t.me/${botUsername}?start=${fileToken}`);
       }
@@ -151,21 +150,6 @@ bot.on('message', (msg) => {
       bot.sendMessage(chatId, 'You are not authorized to store files.');
     }
   }
-});
-
-// Provide a shareable link for the stored file or batch
-bot.onText(/\/sharefile (\w{32})/, (msg, match) => {
-  restrictAdminCommand(msg, () => {
-    const chatId = msg.chat.id;
-    const fileToken = match[1];
-
-    if (fileStore[fileToken]) {
-      const link = `https://t.me/${botUsername}?start=${fileToken}`;
-      bot.sendMessage(chatId, `Share this link to access the file or batch: ${link}`);
-    } else {
-      bot.sendMessage(chatId, 'Invalid token! No file or batch found.');
-    }
-  });
 });
 
 // Add a new command to delete a file or batch
@@ -189,9 +173,13 @@ bot.onText(/\/listfiles/, (msg) => {
   restrictAdminCommand(msg, () => {
     const chatId = msg.chat.id;
     const fileTokens = Object.keys(fileStore);
+
     if (fileTokens.length > 0) {
       const fileList = fileTokens
-        .map((token) => `Token: ${token}\nLink: https://t.me/${botUsername}?start=${token}`)
+        .map((token, index) => {
+          const fileData = fileStore[token];
+          return `${index + 1}. Token: ${token}\nLink: https://t.me/${botUsername}?start=${token}\nTimestamp: ${fileData.timestamp}`;
+        })
         .join('\n\n');
       bot.sendMessage(chatId, `Here are the stored files or batches:\n\n${fileList}`);
     } else {
