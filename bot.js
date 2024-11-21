@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const moment = require('moment-timezone');  // Import moment-timezone
 const storageFilePath = './storage.json';
+const logFilePath = './bot_actions.log';  // Log file to track actions
 
 // Read storage file
 function readStorage() {
@@ -26,6 +27,12 @@ function writeStorage(data) {
   } catch (error) {
     console.error('Error writing to storage file:', error);
   }
+}
+
+// Log actions to a file
+function logAction(action) {
+  const logMessage = `${getCurrentTime()} - ${action}\n`;
+  fs.appendFileSync(logFilePath, logMessage);
 }
 
 // Replace with your bot's token from BotFather
@@ -58,7 +65,7 @@ bot.onText(/\/start(.*)/, (msg, match) => {
       const fileData = fileStore[token];
       if (fileData.files) {
         // Handle batch
-        const filePromises = fileData.files.map((fileId) => bot.sendDocument(chatId, fileId));
+        const filePromises = fileData.files.map((fileData) => bot.sendDocument(chatId, fileData.fileId));
         Promise.all(filePromises)
           .then(() => bot.sendMessage(chatId, 'All files in the batch have been sent!'))
           .catch((error) => {
@@ -89,7 +96,8 @@ bot.onText(/\/help/, (msg) => {
 /start - Start the bot or access a file using a deep link\n
 /help - Get help with the bot's features\n
 /deletefile <token> - Delete a stored file or batch (admin only)\n
-/listfiles - List all stored files or batches (admin only)`);
+/listfiles - List all stored files or batches (admin only)\n
+/selectfile - Select a file from the stored batch`);
 });
 
 // Check if the user is the admin
@@ -123,6 +131,7 @@ bot.onText(/\/batchfile/, (msg) => {
     fileStore[batchToken] = { files: [], chatId, timestamp: getCurrentTime() }; // Store the timestamp with GMT+5:30
     writeStorage(fileStore);
     bot.sendMessage(chatId, `Batch mode started! Use token: ${batchToken}. Send files to add them to this batch.`);
+    logAction(`Batch created with token: ${batchToken}`);
   });
 });
 
@@ -133,24 +142,29 @@ bot.on('message', (msg) => {
   if (msg.document || msg.photo) {
     if (isAdmin(msg)) {
       let fileId;
+      let fileName;
 
       if (msg.document) {
         fileId = msg.document.file_id;
+        fileName = msg.document.file_name || 'Unnamed File'; // Store the file name
       } else if (msg.photo) {
         fileId = msg.photo[msg.photo.length - 1].file_id; // Highest resolution
+        fileName = 'Photo File'; // Default name for photos
       }
 
       if (batchToken && fileStore[batchToken]) {
         // Add to the current batch
-        fileStore[batchToken].files.push(fileId);
+        fileStore[batchToken].files.push({ fileId, fileName });
         writeStorage(fileStore);
         bot.sendMessage(chatId, `File added to batch! Use link: https://t.me/${botUsername}?start=${batchToken}`);
+        logAction(`File added to batch with token: ${batchToken}`);
       } else {
         // Single file handling
         const fileToken = crypto.randomBytes(16).toString('hex');
-        fileStore[fileToken] = { fileId, chatId, timestamp: getCurrentTime() }; // Store the timestamp with GMT+5:30
+        fileStore[fileToken] = { fileId, fileName, chatId, timestamp: getCurrentTime() }; // Store the timestamp with GMT+5:30
         writeStorage(fileStore);
         bot.sendMessage(chatId, `Your file has been stored! Use this link to access it: https://t.me/${botUsername}?start=${fileToken}`);
+        logAction(`Single file stored with token: ${fileToken}`);
       }
     } else {
       bot.sendMessage(chatId, 'You are not authorized to store files.');
@@ -168,13 +182,14 @@ bot.onText(/\/deletefile (\w{32})/, (msg, match) => {
       delete fileStore[fileToken];
       writeStorage(fileStore);
       bot.sendMessage(chatId, 'File or batch deleted successfully!');
+      logAction(`File or batch with token ${fileToken} deleted`);
     } else {
       bot.sendMessage(chatId, 'Sorry, no file or batch found for that token.');
     }
   });
 });
 
-// Add a new command to list all stored files or batches
+// Add a new command to list all stored files or batches with the option to edit the file name
 bot.onText(/\/listfiles/, (msg) => {
   restrictAdminCommand(msg, () => {
     const chatId = msg.chat.id;
@@ -184,12 +199,51 @@ bot.onText(/\/listfiles/, (msg) => {
       const fileList = fileTokens
         .map((token, index) => {
           const fileData = fileStore[token];
-          return `${index + 1}. Token: ${token}\nLink: https://t.me/${botUsername}?start=${token}\nTimestamp: ${fileData.timestamp}`;
+          return `${index + 1}. Token: ${token}\nFile Name: ${fileData.fileName || 'Unnamed'}\nLink: https://t.me/${botUsername}?start=${token}\nTimestamp: ${fileData.timestamp}`;
         })
         .join('\n\n');
-      bot.sendMessage(chatId, `Here are the stored files or batches:\n\n${fileList}`);
+
+      const inlineKeyboard = fileTokens.map((token) => ([
+        { text: `Edit Name: ${token}`, callback_data: `edit:${token}` }  // Array of buttons (correct structure)
+      ]));
+
+      const options = {
+        reply_markup: {
+          inline_keyboard: inlineKeyboard,  // Updated structure
+        },
+      };
+
+      bot.sendMessage(chatId, `Here are the stored files or batches:\n\n${fileList}`, options);
     } else {
       bot.sendMessage(chatId, 'No files or batches stored.');
     }
   });
+});
+
+// Handle callback query for editing the file name
+bot.on('callback_query', (query) => {
+  const chatId = query.message.chat.id;
+  const data = query.data;
+
+  if (data.startsWith('edit:')) {
+    const token = data.split(':')[1];
+
+    if (fileStore[token]) {
+      bot.sendMessage(chatId, `You selected the file with token: ${token}. Please send the new name for this file.`);
+
+      bot.once('message', (msg) => {  // Use `once` to ensure only one response is captured
+        if (msg.chat.id === chatId && msg.text) {
+          const newFileName = msg.text.trim();
+          if (fileStore[token]) {
+            fileStore[token].fileName = newFileName; // Update the file name in storage
+            writeStorage(fileStore); // Save the changes
+            bot.sendMessage(chatId, `File name has been updated to: ${newFileName}`);
+            logAction(`File name for token ${token} updated to: ${newFileName}`);
+          }
+        }
+      });
+    } else {
+      bot.sendMessage(chatId, 'File with that token not found.');
+    }
+  }
 });

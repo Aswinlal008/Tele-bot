@@ -9,11 +9,16 @@
     "lint": "eslint .",
     "format": "prettier --write ."
   },
-  "keywords": ["telegram", "bot", "file-storage"],
+  "keywords": [
+    "telegram",
+    "bot",
+    "file-storage"
+  ],
   "author": "Your Name",
   "license": "MIT",
   "dependencies": {
     "axios": "^1.7.7",
+    "moment-timezone": "^0.5.46",
     "node-telegram-bot-api": "^0.66.0",
     "telegraf": "^4.16.3"
   },
