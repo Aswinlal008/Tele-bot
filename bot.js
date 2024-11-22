@@ -121,6 +121,8 @@ registerCommand(/\/help/, (msg) => {
 /singlefile - Store a single file (admin only)\n
 /batchfile - Start a batch (admin only)\n
 /listfiles - List all stored files or batches (admin only)\n
+/listfilenames - List file names with links (admin only)\n
+/editfilename <token> <new_name> - Edit the file name (admin only)\n
 /deletefile <token> - Delete a stored file or batch (admin only)`);
 });
 
@@ -189,6 +191,23 @@ registerCommand(/\/deletefile (\w{32})/, (msg, match) => {
   });
 });
 
+// Handle /editfilename command
+registerCommand(/\/editfilename (\w{32}) (.+)/, (msg, match) => {
+  restrictAdminCommand(msg, () => {
+    const fileToken = match[1];
+    const newFileName = match[2];
+
+    if (fileStore[fileToken]) {
+      fileStore[fileToken].fileName = newFileName;
+      writeStorage(fileStore);
+      bot.sendMessage(msg.chat.id, `File name updated to: ${newFileName}`);
+      logAction(`File name updated for token ${fileToken} to ${newFileName}`);
+    } else {
+      bot.sendMessage(msg.chat.id, 'No file or batch found for the given token.');
+    }
+  });
+});
+
 // Handle /listfiles command
 registerCommand(/\/listfiles/, (msg) => {
   restrictAdminCommand(msg, () => {
@@ -209,8 +228,9 @@ registerCommand(/\/listfiles/, (msg) => {
     }
   });
 });
-// Add a new command to list all stored files or batches with access and delete links
-bot.onText(/\/listfiles/, (msg) => {
+
+// Handle /listfilenames command
+registerCommand(/\/listfilenames/, (msg) => {
   restrictAdminCommand(msg, () => {
     const chatId = msg.chat.id;
     const fileTokens = Object.keys(fileStore);
@@ -220,42 +240,14 @@ bot.onText(/\/listfiles/, (msg) => {
         .map((token, index) => {
           const fileData = fileStore[token];
           const accessLink = `https://t.me/${botUsername}?start=${token}`;
-          const deleteCommand = `/deletefile ${token}`;
+          const editCommand = `tg://msg?text=/editfilename%20${token}`; // Edit file link
+          const deleteCommand = `tg://msg?text=/deletefile%20${token}`; // Delete file link
           const fileName = fileData.fileName || 'Unnamed';
 
-          return `${index + 1}. **File Name**: ${fileName}\n**Access Link**: [Open File](${accessLink})\n**Delete Command**: [Delete File](tg://msg?text=${deleteCommand})\n**Timestamp**: ${fileData.timestamp}`;
+          return `${index + 1}. **File Name**: ${fileName}\n**Access Link**: [Open File](${accessLink})\n**Edit Command**: [Edit File](${editCommand})\n**Delete Command**: [Delete File](${deleteCommand})`;
         })
-        .join('\n\n'); // Separate each entry with newlines
-
-      bot.sendMessage(chatId, `Here are the stored files or batches:\n\n${fileList}`, {
-        parse_mode: 'Markdown', // Enable Markdown formatting
-      });
-    } else {
-      bot.sendMessage(chatId, 'No files or batches stored.');
-    }
-  });
-});
-
-// Add a new command to list only file names and their access links
-bot.onText(/\/listfilenames/, (msg) => {
-  restrictAdminCommand(msg, () => {
-    const chatId = msg.chat.id;
-    const fileTokens = Object.keys(fileStore);
-
-    if (fileTokens.length > 0) {
-      const fileList = fileTokens
-        .map((token, index) => {
-          const fileData = fileStore[token];
-          const accessLink = `https://t.me/${botUsername}?start=${token}`;
-          const fileName = fileData.fileName || 'Unnamed';
-
-          return `${index + 1}. **File Name**: ${fileName}\n**Access Link**: [Open File](${accessLink})`;
-        })
-        .join('\n\n'); // Separate each entry with newlines
-
-      bot.sendMessage(chatId, `Here are the stored files or batches:\n\n${fileList}`, {
-        parse_mode: 'Markdown', // Enable Markdown formatting
-      });
+        .join('\n\n');
+      bot.sendMessage(chatId, `Stored files:\n\n${fileList}`, { parse_mode: 'Markdown' });
     } else {
       bot.sendMessage(chatId, 'No files or batches stored.');
     }
