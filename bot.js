@@ -96,8 +96,7 @@ bot.onText(/\/help/, (msg) => {
 /start - Start the bot or access a file using a deep link\n
 /help - Get help with the bot's features\n
 /deletefile <token> - Delete a stored file or batch (admin only)\n
-/listfiles - List all stored files or batches (admin only)\n
-/selectfile - Select a file from the stored batch`);
+/listfiles - List all stored files or batches (admin only)`);
 });
 
 // Check if the user is the admin
@@ -196,54 +195,35 @@ bot.onText(/\/listfiles/, (msg) => {
     const fileTokens = Object.keys(fileStore);
 
     if (fileTokens.length > 0) {
+      // Create a list of files/batches without monospace for tokens
       const fileList = fileTokens
         .map((token, index) => {
           const fileData = fileStore[token];
-          return `${index + 1}. Token: ${token}\nFile Name: ${fileData.fileName || 'Unnamed'}\nLink: https://t.me/${botUsername}?start=${token}\nTimestamp: ${fileData.timestamp}`;
-        })
-        .join('\n\n');
+          const fileLink = `https://t.me/${botUsername}?start=${token}`;
+          
+          // Log the file link
+          logAction(`File link: ${fileLink} for Token: ${token} was sent`);
 
-      const inlineKeyboard = fileTokens.map((token) => ([
-        { text: `Edit Name: ${token}`, callback_data: `edit:${token}` }  // Array of buttons (correct structure)
-      ]));
+          // Return formatted file info without monospace
+          return `${index + 1}. Token: ${token}\nFile Name: ${fileData.fileName || 'Unnamed'}\nLink: ${fileLink}\nTimestamp: ${fileData.timestamp}`;
+        })
+        .join('\n\n');  // Join the list into a single string with new lines separating each file entry
+
+      // Create inline keyboard buttons for each file to edit its name
+      const inlineKeyboard = fileTokens.map((token) => ([{
+        text: `Edit Name: ${token}`, callback_data: `edit:${token}`
+      }]));
 
       const options = {
         reply_markup: {
-          inline_keyboard: inlineKeyboard,  // Updated structure
+          inline_keyboard: inlineKeyboard,  // Pass the inline keyboard buttons
         },
       };
 
+      // Send the list of files/batches without monospace formatting for token
       bot.sendMessage(chatId, `Here are the stored files or batches:\n\n${fileList}`, options);
     } else {
       bot.sendMessage(chatId, 'No files or batches stored.');
     }
   });
-});
-
-// Handle callback query for editing the file name
-bot.on('callback_query', (query) => {
-  const chatId = query.message.chat.id;
-  const data = query.data;
-
-  if (data.startsWith('edit:')) {
-    const token = data.split(':')[1];
-
-    if (fileStore[token]) {
-      bot.sendMessage(chatId, `You selected the file with token: ${token}. Please send the new name for this file.`);
-
-      bot.once('message', (msg) => {  // Use `once` to ensure only one response is captured
-        if (msg.chat.id === chatId && msg.text) {
-          const newFileName = msg.text.trim();
-          if (fileStore[token]) {
-            fileStore[token].fileName = newFileName; // Update the file name in storage
-            writeStorage(fileStore); // Save the changes
-            bot.sendMessage(chatId, `File name has been updated to: ${newFileName}`);
-            logAction(`File name for token ${token} updated to: ${newFileName}`);
-          }
-        }
-      });
-    } else {
-      bot.sendMessage(chatId, 'File with that token not found.');
-    }
-  }
 });
