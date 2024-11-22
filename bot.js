@@ -2,9 +2,9 @@
 const TelegramBot = require('node-telegram-bot-api');
 const crypto = require('crypto');
 const fs = require('fs');
-const moment = require('moment-timezone');  // Import moment-timezone
+const moment = require('moment-timezone'); // Import moment-timezone
 const storageFilePath = './storage.json';
-const logFilePath = './bot_actions.log';  // Log file to track actions
+const logFilePath = './bot_actions.log'; // Log file to track actions
 
 // Read storage file
 function readStorage() {
@@ -51,53 +51,8 @@ let batchToken = null; // Temporary batch token for storing multiple files
 
 // Function to get the current time in GMT +5:30
 function getCurrentTime() {
-  return moment.tz('Asia/Kolkata').format('YYYY-MM-DD HH:mm:ss');  // Format in desired time zone
+  return moment.tz('Asia/Kolkata').format('YYYY-MM-DD HH:mm:ss'); // Format in desired time zone
 }
-
-// Respond to a "/start" command or deep link
-bot.onText(/\/start(.*)/, (msg, match) => {
-  const chatId = msg.chat.id;
-  const token = match[1].trim(); // Extract the token from the deep link if provided
-
-  if (token) {
-    // If a token is provided, retrieve the corresponding file(s)
-    if (fileStore[token]) {
-      const fileData = fileStore[token];
-      if (fileData.files) {
-        // Handle batch
-        const filePromises = fileData.files.map((fileData) => bot.sendDocument(chatId, fileData.fileId));
-        Promise.all(filePromises)
-          .then(() => bot.sendMessage(chatId, 'All files in the batch have been sent!'))
-          .catch((error) => {
-            bot.sendMessage(chatId, 'There was an issue retrieving the files.');
-            console.error(error);
-          });
-      } else {
-        // Handle single file
-        bot.sendDocument(chatId, fileData.fileId)
-          .then(() => bot.sendMessage(chatId, 'Here is your requested file!'))
-          .catch((error) => {
-            bot.sendMessage(chatId, 'Sorry, there was an issue retrieving the file.');
-            console.error(error);
-          });
-      }
-    } else {
-      bot.sendMessage(chatId, 'Invalid token! No file or batch found.');
-    }
-  } else {
-    bot.sendMessage(chatId, 'Welcome! Use /help to see the available commands.');
-  }
-});
-
-// Respond to a "/help" command with updated commands list
-bot.onText(/\/help/, (msg) => {
-  const chatId = msg.chat.id;
-  bot.sendMessage(chatId, `Here are the commands I can assist you with:\n
-/start - Start the bot or access a file using a deep link\n
-/help - Get help with the bot's features\n
-/deletefile <token> - Delete a stored file or batch (admin only)\n
-/listfiles - List all stored files or batches (admin only)`);
-});
 
 // Check if the user is the admin
 function isAdmin(msg) {
@@ -114,114 +69,53 @@ function restrictAdminCommand(msg, callback) {
   }
 }
 
-// Handle "/singlefile" command to store a single file for the admin
-bot.onText(/\/singlefile/, (msg) => {
-  restrictAdminCommand(msg, () => {
-    const chatId = msg.chat.id;
-    bot.sendMessage(chatId, 'Please send a single file to store.');
-  });
-});
-
-// Handle "/batchfile" command to start storing multiple files under one token
-bot.onText(/\/batchfile/, (msg) => {
-  restrictAdminCommand(msg, () => {
-    const chatId = msg.chat.id;
-    batchToken = crypto.randomBytes(16).toString('hex');
-    fileStore[batchToken] = { files: [], chatId, timestamp: getCurrentTime() }; // Store the timestamp with GMT+5:30
-    writeStorage(fileStore);
-    bot.sendMessage(chatId, `Batch mode started! Use token: ${batchToken}. Send files to add them to this batch.`);
-    logAction(`Batch created with token: ${batchToken}`);
-  });
-});
-
-// Handle incoming files (store single or multiple files)
-bot.on('message', (msg) => {
-  const chatId = msg.chat.id;
-
-  if (msg.document || msg.photo) {
-    if (isAdmin(msg)) {
-      let fileId;
-      let fileName;
-
-      if (msg.document) {
-        fileId = msg.document.file_id;
-        fileName = msg.document.file_name || 'Unnamed File'; // Store the file name
-      } else if (msg.photo) {
-        fileId = msg.photo[msg.photo.length - 1].file_id; // Highest resolution
-        fileName = 'Photo File'; // Default name for photos
-      }
-
-      if (batchToken && fileStore[batchToken]) {
-        // Add to the current batch
-        fileStore[batchToken].files.push({ fileId, fileName });
-        writeStorage(fileStore);
-        bot.sendMessage(chatId, `File added to batch! Use link: https://t.me/${botUsername}?start=${batchToken}`);
-        logAction(`File added to batch with token: ${batchToken}`);
-      } else {
-        // Single file handling
-        const fileToken = crypto.randomBytes(16).toString('hex');
-        fileStore[fileToken] = { fileId, fileName, chatId, timestamp: getCurrentTime() }; // Store the timestamp with GMT+5:30
-        writeStorage(fileStore);
-        bot.sendMessage(chatId, `Your file has been stored! Use this link to access it: https://t.me/${botUsername}?start=${fileToken}`);
-        logAction(`Single file stored with token: ${fileToken}`);
-      }
-    } else {
-      bot.sendMessage(chatId, 'You are not authorized to store files.');
-    }
-  }
-});
-
-// Add a new command to delete a file or batch
-bot.onText(/\/deletefile (\w{32})/, (msg, match) => {
-  restrictAdminCommand(msg, () => {
-    const chatId = msg.chat.id;
-    const fileToken = match[1];
-
-    if (fileStore[fileToken]) {
-      delete fileStore[fileToken];
-      writeStorage(fileStore);
-      bot.sendMessage(chatId, 'File or batch deleted successfully!');
-      logAction(`File or batch with token ${fileToken} deleted`);
-    } else {
-      bot.sendMessage(chatId, 'Sorry, no file or batch found for that token.');
-    }
-  });
-});
-
-// Add a new command to list all stored files or batches with the option to edit the file name
+// Add a new command to list all stored files or batches with access and delete links
 bot.onText(/\/listfiles/, (msg) => {
   restrictAdminCommand(msg, () => {
     const chatId = msg.chat.id;
     const fileTokens = Object.keys(fileStore);
 
     if (fileTokens.length > 0) {
-      // Create a list of files/batches without monospace for tokens
       const fileList = fileTokens
         .map((token, index) => {
           const fileData = fileStore[token];
-          const fileLink = `https://t.me/${botUsername}?start=${token}`;
-          
-          // Log the file link
-          logAction(`File link: ${fileLink} for Token: ${token} was sent`);
+          const accessLink = `https://t.me/${botUsername}?start=${token}`;
+          const deleteCommand = `/deletefile ${token}`;
+          const fileName = fileData.fileName || 'Unnamed';
 
-          // Return formatted file info without monospace
-          return `${index + 1}. Token: ${token}\nFile Name: ${fileData.fileName || 'Unnamed'}\nLink: ${fileLink}\nTimestamp: ${fileData.timestamp}`;
+          return `${index + 1}. **File Name**: ${fileName}\n**Access Link**: [Open File](${accessLink})\n**Delete Command**: [Delete File](tg://msg?text=${deleteCommand})\n**Timestamp**: ${fileData.timestamp}`;
         })
-        .join('\n\n');  // Join the list into a single string with new lines separating each file entry
+        .join('\n\n'); // Separate each entry with newlines
 
-      // Create inline keyboard buttons for each file to edit its name
-      const inlineKeyboard = fileTokens.map((token) => ([{
-        text: `Edit Name: ${token}`, callback_data: `edit:${token}`
-      }]));
+      bot.sendMessage(chatId, `Here are the stored files or batches:\n\n${fileList}`, {
+        parse_mode: 'Markdown', // Enable Markdown formatting
+      });
+    } else {
+      bot.sendMessage(chatId, 'No files or batches stored.');
+    }
+  });
+});
 
-      const options = {
-        reply_markup: {
-          inline_keyboard: inlineKeyboard,  // Pass the inline keyboard buttons
-        },
-      };
+// Add a new command to list only file names and their access links
+bot.onText(/\/listfilenames/, (msg) => {
+  restrictAdminCommand(msg, () => {
+    const chatId = msg.chat.id;
+    const fileTokens = Object.keys(fileStore);
 
-      // Send the list of files/batches without monospace formatting for token
-      bot.sendMessage(chatId, `Here are the stored files or batches:\n\n${fileList}`, options);
+    if (fileTokens.length > 0) {
+      const fileList = fileTokens
+        .map((token, index) => {
+          const fileData = fileStore[token];
+          const accessLink = `https://t.me/${botUsername}?start=${token}`;
+          const fileName = fileData.fileName || 'Unnamed';
+
+          return `${index + 1}. **File Name**: ${fileName}\n**Access Link**: [Open File](${accessLink})`;
+        })
+        .join('\n\n'); // Separate each entry with newlines
+
+      bot.sendMessage(chatId, `Here are the stored files or batches:\n\n${fileList}`, {
+        parse_mode: 'Markdown', // Enable Markdown formatting
+      });
     } else {
       bot.sendMessage(chatId, 'No files or batches stored.');
     }
