@@ -57,14 +57,11 @@
       }
     ],
     "chatId": 803543058,
-    "timestamp": "2024-11-21 15:47:34"
+    "timestamp": "2024-11-21 15:47:34",
+    "fileName": "Harry Potter and the Prisoner of Askaban"
   },
   "6cdc8eb31900d8898f99019bf75b25ba": {
     "files": [
-      {
-        "fileId": "BQACAgQAAxkBAAICvGc_DY3m9CdEl3ka0ac-y_fD1JHAAAJYBAACwXw5U3jlETAKJJepNgQ",
-        "fileName": "Harry.Potter.4.2005.Br.720p.x265[@archive_series].mkv"
-      },
       {
         "fileId": "BQACAgUAAxkBAAICvWc_DY0XtfWpuj9V0BhVNHfBBbv5AAIOAANnjOFV_fjQphdxvMI2BA",
         "fileName": "Harry.Potter.and.the.Goblet.of.Fire.2005.1080p @RickyChannel.mkv"
@@ -79,7 +76,8 @@
       }
     ],
     "chatId": 803543058,
-    "timestamp": "2024-11-22 11:24:58"
+    "timestamp": "2024-11-22 11:24:58",
+    "fileName": "Harry Potter and the Goblet of fire"
   },
   "ee64fa4b38b557efb6887af88460f5ba": {
     "files": [
@@ -97,7 +95,8 @@
       }
     ],
     "chatId": 803543058,
-    "timestamp": "2024-11-22 12:02:58"
+    "timestamp": "2024-11-22 12:02:58",
+    "fileName": "Jurassic World 2015"
   },
   "a7005c3f3dab4014ebd09fb0e4d88677": {
     "files": [
@@ -133,5 +132,21 @@
     "chatId": 803543058,
     "timestamp": "2024-11-23 09:33:51",
     "fileName": "Idiyan Chandhu 2024"
+  },
+  "d2d14a19febd4bd55b1976e124608603": {
+    "files": [
+      {
+        "fileId": "BQACAgQAAxkBAAIFpGdDBpyZ-__JhH_J07vud5M1RqyAAAJHCAACQJyxUfOC4vmAqYe2NgQ",
+        "fileName": "@Mj_Linkz_Jurassic_World:_Fallen_Kingdom_2018_720p_BluRay_x265.mkv"
+      },
+      {
+        "fileId": "BQACAgQAAxkBAAIFpGdDBpyZ-__JhH_J07vud5M1RqyAAAJHCAACQJyxUfOC4vmAqYe2NgQ",
+        "fileName": "@Mj_Linkz_Jurassic_World:_Fallen_Kingdom_2018_720p_BluRay_x265.mkv"
+      }
+    ],
+    "title": "​️Jurassic World: Fallen Kingdom [2018]",
+    "chatId": 803543058,
+    "timestamp": "2024-11-24 16:27:21",
+    "fileName": "​️ Jurassic World: Fallen Kingdom [2018]"
   }
 }

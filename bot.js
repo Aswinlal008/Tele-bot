@@ -61,11 +61,10 @@ function isAdmin(msg) {
 
 // Helper function to restrict admin-only commands
 function restrictAdminCommand(msg, callback) {
-  const chatId = msg.chat.id;
   if (isAdmin(msg)) {
     callback();
   } else {
-    bot.sendMessage(chatId, 'You are not authorized to use this command.');
+    bot.sendMessage(msg.chat.id, 'You are not authorized to use this command.');
   }
 }
 
@@ -85,66 +84,90 @@ registerCommand(/\/start(.*)/, (msg, match) => {
   const chatId = msg.chat.id;
   const token = match[1].trim();
 
-  if (token) {
-    if (fileStore[token]) {
-      const fileData = fileStore[token];
-      if (fileData.files) {
-        const filePromises = fileData.files.map((fileData) => bot.sendDocument(chatId, fileData.fileId));
-        Promise.all(filePromises)
-          .then(() => bot.sendMessage(chatId, 'All files in the batch have been sent!'))
-          .catch((error) => {
-            bot.sendMessage(chatId, 'There was an issue retrieving the files.');
-            console.error(error);
-          });
-      } else {
-        bot.sendDocument(chatId, fileData.fileId)
-          .then(() => bot.sendMessage(chatId, 'Here is your requested file!'))
-          .catch((error) => {
-            bot.sendMessage(chatId, 'There was an issue retrieving the file.');
-            console.error(error);
-          });
-      }
+  // If no token is provided, send a welcome message with a contact button
+  if (!token) {
+    const welcomeMessage = 'Welcome to the bot! Please provide a valid token to access files.';
+    
+    // Creating an inline keyboard with a contact button
+    const contactButton = {
+      text: 'Contact Support',  // Button text
+      url: 'https://t.me/aswinlalus' // Link to BotFather (replace with your contact link or support link)
+    };
+    
+    const inlineKeyboard = {
+      inline_keyboard: [
+        [contactButton]  // Adding the button to the keyboard
+      ]
+    };
+
+    bot.sendMessage(chatId, welcomeMessage, {
+      reply_markup: inlineKeyboard  // Attach the inline keyboard to the message
+    });
+    return;
+  }
+
+  // If a token is provided
+  if (token && fileStore[token]) {
+    const fileData = fileStore[token];
+    if (fileData.files) {
+      const filePromises = fileData.files.map((fileData) => bot.sendDocument(chatId, fileData.fileId));
+      Promise.all(filePromises)
+        .then(() => bot.sendMessage(chatId, 'All files in the batch have been sent!'))
+        .catch((error) => bot.sendMessage(chatId, 'There was an issue retrieving the files.'));
     } else {
-      bot.sendMessage(chatId, 'Invalid token! No file or batch found.');
+      bot.sendDocument(chatId, fileData.fileId)
+        .then(() => bot.sendMessage(chatId, 'Here is your requested file!'));
     }
   } else {
-    bot.sendMessage(chatId, 'Welcome! Use /help to see the available commands.');
+    bot.sendMessage(chatId, 'Invalid token! No file or batch found.');
   }
 });
+
 
 // Handle /help command
 registerCommand(/\/help/, (msg) => {
   const chatId = msg.chat.id;
-  bot.sendMessage(chatId, `Commands:\n
-/start - Access a file or batch with a token\n
-/help - Get help with bot features\n
-/singlefile - Store a single file (admin only)\n
-/batchfile - Start a batch (admin only)\n
-/listfiles - List all stored files or batches (admin only)\n
-/listfilenames - List file names with links (admin only)\n
-/editfilename <token> <new_name> - Edit the file name (admin only)\n
-/deletefile <token> - Delete a stored file or batch (admin only)`);
+  bot.sendMessage(chatId, `Commands:\n/start - Access a file or batch with a token\n/help - Get help with bot features`);
 });
 
-// Handle /singlefile command
-registerCommand(/\/singlefile/, (msg) => {
+// Handle /helpadmin command
+registerCommand(/\/helpadmin/, (msg) => {
   restrictAdminCommand(msg, () => {
-    bot.sendMessage(msg.chat.id, 'Please send a single file to store.');
+    const chatId = msg.chat.id;
+    bot.sendMessage(chatId, `Admin Commands:\n
+/sendfile <file_name> - Store a file or start a batch\n
+/addfiletobatch <batch_token> - Add files to an existing batch\n
+/removefilefrombatch <batch_token> <file_index> - Remove a file from a batch\n
+/listfiles - List all stored files or batches\n
+/listfilenames - List file names with links\n
+/editfilename <token> <new_name> - Edit the name of a stored file\n
+/deletefile <token> - Delete a file or batch\n
+/status - Get bot status\n
+/clearlogs - Clear action logs`);
   });
 });
 
-// Handle /batchfile command
-registerCommand(/\/batchfile/, (msg) => {
+// Handle /sendfile command
+registerCommand(/\/sendfile/, (msg) => {
   restrictAdminCommand(msg, () => {
-    batchToken = crypto.randomBytes(16).toString('hex');
-    fileStore[batchToken] = { files: [], chatId: msg.chat.id, timestamp: getCurrentTime() };
-    writeStorage(fileStore);
-    bot.sendMessage(msg.chat.id, `Batch mode started. Use token: ${batchToken}`);
-    logAction(`Batch created with token: ${batchToken}`);
+    bot.sendMessage(msg.chat.id, 'Please reply with a name for the file/batch.');
+    bot.once('message', (titleMsg) => {
+      const fileName = titleMsg.text.trim();
+      batchToken = crypto.randomBytes(16).toString('hex');
+      fileStore[batchToken] = {
+        files: [],
+        fileName,
+        chatId: msg.chat.id,
+        timestamp: getCurrentTime()
+      };
+      bot.sendMessage(msg.chat.id, `Batch mode started with name "${fileName}". Use token: \`${batchToken}\``);
+      logAction(`Batch created with token: ${batchToken} and name: ${fileName}`);
+      bot.sendMessage(msg.chat.id, `Now send the file(s) to add to the batch.`);
+    });
   });
 });
 
-// Handle incoming files
+// Handle incoming files for batch or single
 bot.on('message', (msg) => {
   if (msg.document || msg.photo) {
     const chatId = msg.chat.id;
@@ -219,10 +242,11 @@ registerCommand(/\/listfiles/, (msg) => {
         .map((token, index) => {
           const fileData = fileStore[token];
           const link = `https://t.me/${botUsername}?start=${token}`;
-          return `${index + 1}. Token: ${token}\nFile: ${fileData.fileName || 'Unnamed'}\nLink: ${link}\nTime: ${fileData.timestamp}`;
+          return `${index + 1}. **File Name**: ${fileData.fileName || 'Unnamed'}\n**Token**: \`${token}\`\n**Link**: [Access File](${link})\n**Time**: ${fileData.timestamp}`;
         })
         .join('\n\n');
-      bot.sendMessage(chatId, `Stored files:\n\n${fileList}`);
+
+      bot.sendMessage(chatId, `Stored files or batches:\n\n${fileList}`, { parse_mode: 'Markdown' });
     } else {
       bot.sendMessage(chatId, 'No files or batches stored.');
     }
@@ -251,5 +275,23 @@ registerCommand(/\/listfilenames/, (msg) => {
     } else {
       bot.sendMessage(chatId, 'No files or batches stored.');
     }
+  });
+});
+
+
+// Handle /status command
+registerCommand(/\/status/, (msg) => {
+  restrictAdminCommand(msg, () => {
+    const chatId = msg.chat.id;
+    bot.sendMessage(chatId, `Bot is running smoothly!`);
+  });
+});
+
+// Handle /clearlogs command
+registerCommand(/\/clearlogs/, (msg) => {
+  restrictAdminCommand(msg, () => {
+    fs.writeFileSync(logFilePath, ''); // Clear the log file
+    bot.sendMessage(msg.chat.id, 'Logs cleared!');
+    logAction('Logs cleared by admin.');
   });
 });
