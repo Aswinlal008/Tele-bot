@@ -133,16 +133,17 @@ registerCommand(/\/help/, (msg) => {
 registerCommand(/\/helpadmin/, (msg) => {
   restrictAdminCommand(msg, () => {
     const chatId = msg.chat.id;
-    bot.sendMessage(chatId, `Admin Commands:\n
-/sendfile <file_name> - Store a file or start a batch\n
-/addfiletobatch <batch_token> - Add files to an existing batch\n
-/removefilefrombatch <batch_token> <file_index> - Remove a file from a batch\n
-/listfiles - List all stored files or batches\n
-/listfilenames - List file names with links\n
-/editfilename <token> <new_name> - Edit the name of a stored file\n
-/deletefile <token> - Delete a file or batch\n
-/status - Get bot status\n
-/clearlogs - Clear action logs`);
+    const adminHelpMessage = `Admin Commands:
+  \n/sendfile <file_name> - Start a batch and send files to it
+  \n/addfiletobatch <batch_token> - Add files to an existing batch
+  \n/removefilefrombatch <batch_token> <file_index> - Remove a file from a batch
+  \n/listfiles - List all stored files or batches with details (File name, token, access link, type, size, edit and delete commands, time)
+  \n/editfilename <token> <new_name> - Edit the name of a stored file
+  \n/deletefile <token> - Delete a file or batch
+  \n/status - Get bot status
+  \n/clearlogs - Clear action logs`;
+
+    bot.sendMessage(chatId, adminHelpMessage);
   });
 });
 
@@ -239,32 +240,15 @@ registerCommand(/\/deletefile (\w{32})/, (msg, match) => {
     }
   });
 });
-
 // Handle /listfiles command
 registerCommand(/\/listfiles/, (msg) => {
-  restrictAdminCommand(msg, () => {
-    const fileTokens = Object.keys(fileStore);
-    if (fileTokens.length === 0) {
-      bot.sendMessage(msg.chat.id, 'No files or batches found.');
-    } else {
-      const fileList = fileTokens
-        .map((token, index) => {
-          const fileData = fileStore[token];
-          const link = `https://t.me/${botUsername}?start=${token}`;
-          return `${index + 1}. **File Name**: ${fileData.fileName || 'Unnamed'}\n**Token**: \`${token}\`\n**Link**: [Access File](${link})\n**Type**: ${fileData.mimeType || 'Unknown Type'}\n**Size**: ${fileData.fileSize ? (fileData.fileSize / 1024).toFixed(2) + ' KB' : 'Unknown'}\n**Time**: ${fileData.timestamp}`;
-        })
-        .join('\n\n');
-      bot.sendMessage(msg.chat.id, fileList, { parse_mode: 'Markdown' });
-    }
-  });
-});
-// Handle /listfilenames command
-registerCommand(/\/listfilenames/, (msg) => {
   restrictAdminCommand(msg, () => {
     const chatId = msg.chat.id;
     const fileTokens = Object.keys(fileStore);
 
-    if (fileTokens.length > 0) {
+    if (fileTokens.length === 0) {
+      bot.sendMessage(chatId, 'No files or batches found.');
+    } else {
       const fileList = fileTokens
         .map((token, index) => {
           const fileData = fileStore[token];
@@ -272,17 +256,18 @@ registerCommand(/\/listfilenames/, (msg) => {
           const editCommand = `tg://msg?text=/editfilename%20${token}`; // Edit file link
           const deleteCommand = `tg://msg?text=/deletefile%20${token}`; // Delete file link
           const fileName = fileData.fileName || 'Unnamed';
+          const fileType = fileData.mimeType || 'Unknown Type';
+          const fileSize = fileData.fileSize ? (fileData.fileSize / 1024).toFixed(2) + ' KB' : 'Unknown';
+          const timestamp = fileData.timestamp;
 
-          return `${index + 1}. **File Name**: ${fileName}\n**Access Link**: [Open File](${accessLink})\n**Edit Command**: [Edit File](${editCommand})\n**Delete Command**: [Delete File](${deleteCommand})`;
+          return `${index + 1}. **File Name**: ${fileName}\n**Token**: \`${token}\`\n**Link**: [Access File](${accessLink})\n**Type**: ${fileType}\n**Size**: ${fileSize}\n**Edit Command**: [Edit File](${editCommand})\n**Delete Command**: [Delete File](${deleteCommand})\n**Time**: ${timestamp}`;
         })
         .join('\n\n');
+
       bot.sendMessage(chatId, `Stored files:\n\n${fileList}`, { parse_mode: 'Markdown' });
-    } else {
-      bot.sendMessage(chatId, 'No files or batches stored.');
     }
   });
 });
-
 
 // Handle /status command
 registerCommand(/\/status/, (msg) => {
