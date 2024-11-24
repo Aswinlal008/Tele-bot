@@ -133,20 +133,29 @@
     "timestamp": "2024-11-23 09:33:51",
     "fileName": "Idiyan Chandhu 2024"
   },
-  "d2d14a19febd4bd55b1976e124608603": {
+  "18aaaa94d891b3e1f90326e503bbfd70": {
     "files": [
       {
-        "fileId": "BQACAgQAAxkBAAIFpGdDBpyZ-__JhH_J07vud5M1RqyAAAJHCAACQJyxUfOC4vmAqYe2NgQ",
-        "fileName": "@Mj_Linkz_Jurassic_World:_Fallen_Kingdom_2018_720p_BluRay_x265.mkv"
+        "fileId": "BAACAgUAAxkBAAIFo2dDBpyXwWlJhvOJKGvm-cKNDLJ9AAKKCQACdCtQVfS_tvOd9Fg8NgQ",
+        "fileName": "Jurassic_World:_Fallen_Kingdom_2018_480p_BluRay_x264_ESubs_Dual.mkv",
+        "mimeType": "video/x-matroska",
+        "fileSize": 406739917
       },
       {
         "fileId": "BQACAgQAAxkBAAIFpGdDBpyZ-__JhH_J07vud5M1RqyAAAJHCAACQJyxUfOC4vmAqYe2NgQ",
-        "fileName": "@Mj_Linkz_Jurassic_World:_Fallen_Kingdom_2018_720p_BluRay_x265.mkv"
+        "fileName": "@Mj_Linkz_Jurassic_World:_Fallen_Kingdom_2018_720p_BluRay_x265.mkv",
+        "mimeType": "video/x-matroska",
+        "fileSize": 847098593
+      },
+      {
+        "fileId": "BAACAgUAAxkBAAIFpWdDBpyhC8jkXDQQUWmWi5EBS9HOAAL7BwACG6lRVWumEaE80CohNgQ",
+        "fileName": "Jurassic_World:_Fallen_Kingdom_2018_1080p_BluRay_x264_ESubs_Dual.mkv",
+        "mimeType": "video/x-matroska",
+        "fileSize": 3012410389
       }
     ],
-    "title": "​️Jurassic World: Fallen Kingdom [2018]",
+    "fileName": "​️Jurassic World: Fallen Kingdom [2018]",
     "chatId": 803543058,
-    "timestamp": "2024-11-24 16:27:21",
-    "fileName": "​️ Jurassic World: Fallen Kingdom [2018]"
+    "timestamp": "2024-11-24 17:11:20"
   }
 }

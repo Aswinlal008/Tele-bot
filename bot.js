@@ -123,7 +123,6 @@ registerCommand(/\/start(.*)/, (msg, match) => {
   }
 });
 
-
 // Handle /help command
 registerCommand(/\/help/, (msg) => {
   const chatId = msg.chat.id;
@@ -169,26 +168,53 @@ registerCommand(/\/sendfile/, (msg) => {
 
 // Handle incoming files for batch or single
 bot.on('message', (msg) => {
-  if (msg.document || msg.photo) {
+  if (msg.document || msg.photo || msg.audio || msg.video || msg.voice || msg.video_note) {
     const chatId = msg.chat.id;
     if (isAdmin(msg)) {
-      let fileId, fileName;
+      let fileId, fileName, mimeType, fileSize;
+
+      // Handle different types of files
       if (msg.document) {
         fileId = msg.document.file_id;
-        fileName = msg.document.file_name || 'Unnamed File';
+        fileName = msg.document.file_name || 'Unnamed Document';
+        mimeType = msg.document.mime_type;
+        fileSize = msg.document.file_size;
       } else if (msg.photo) {
-        fileId = msg.photo[msg.photo.length - 1].file_id;
+        fileId = msg.photo[msg.photo.length - 1].file_id; // The largest photo
         fileName = 'Photo File';
+        mimeType = 'image/jpeg'; // Default for photos
+        fileSize = msg.photo[msg.photo.length - 1].file_size;
+      } else if (msg.audio) {
+        fileId = msg.audio.file_id;
+        fileName = msg.audio.file_name || 'Unnamed Audio';
+        mimeType = msg.audio.mime_type;
+        fileSize = msg.audio.file_size;
+      } else if (msg.video) {
+        fileId = msg.video.file_id;
+        fileName = msg.video.file_name || 'Unnamed Video';
+        mimeType = msg.video.mime_type;
+        fileSize = msg.video.file_size;
+      } else if (msg.voice) {
+        fileId = msg.voice.file_id;
+        fileName = 'Voice Message';
+        mimeType = 'audio/ogg'; // Default for voice
+        fileSize = msg.voice.file_size;
+      } else if (msg.video_note) {
+        fileId = msg.video_note.file_id;
+        fileName = 'Video Note';
+        mimeType = 'video/mp4'; // Default for video notes
+        fileSize = msg.video_note.file_size;
       }
 
+      // Store the file in batch or as a single file
       if (batchToken && fileStore[batchToken]) {
-        fileStore[batchToken].files.push({ fileId, fileName });
+        fileStore[batchToken].files.push({ fileId, fileName, mimeType, fileSize });
         writeStorage(fileStore);
         bot.sendMessage(chatId, `File added to batch. Token: ${batchToken}`);
         logAction(`File added to batch: ${batchToken}`);
       } else {
         const fileToken = crypto.randomBytes(16).toString('hex');
-        fileStore[fileToken] = { fileId, fileName, chatId, timestamp: getCurrentTime() };
+        fileStore[fileToken] = { fileId, fileName, mimeType, fileSize, chatId, timestamp: getCurrentTime() };
         writeStorage(fileStore);
         bot.sendMessage(chatId, `File stored. Token: ${fileToken}`);
         logAction(`File stored: ${fileToken}`);
@@ -209,24 +235,7 @@ registerCommand(/\/deletefile (\w{32})/, (msg, match) => {
       bot.sendMessage(msg.chat.id, 'File or batch deleted successfully.');
       logAction(`File deleted: ${fileToken}`);
     } else {
-      bot.sendMessage(msg.chat.id, 'No file or batch found for the given token.');
-    }
-  });
-});
-
-// Handle /editfilename command
-registerCommand(/\/editfilename (\w{32}) (.+)/, (msg, match) => {
-  restrictAdminCommand(msg, () => {
-    const fileToken = match[1];
-    const newFileName = match[2];
-
-    if (fileStore[fileToken]) {
-      fileStore[fileToken].fileName = newFileName;
-      writeStorage(fileStore);
-      bot.sendMessage(msg.chat.id, `File name updated to: ${newFileName}`);
-      logAction(`File name updated for token ${fileToken} to ${newFileName}`);
-    } else {
-      bot.sendMessage(msg.chat.id, 'No file or batch found for the given token.');
+      bot.sendMessage(msg.chat.id, 'File not found.');
     }
   });
 });
@@ -234,25 +243,21 @@ registerCommand(/\/editfilename (\w{32}) (.+)/, (msg, match) => {
 // Handle /listfiles command
 registerCommand(/\/listfiles/, (msg) => {
   restrictAdminCommand(msg, () => {
-    const chatId = msg.chat.id;
     const fileTokens = Object.keys(fileStore);
-
-    if (fileTokens.length > 0) {
+    if (fileTokens.length === 0) {
+      bot.sendMessage(msg.chat.id, 'No files or batches found.');
+    } else {
       const fileList = fileTokens
         .map((token, index) => {
           const fileData = fileStore[token];
           const link = `https://t.me/${botUsername}?start=${token}`;
-          return `${index + 1}. **File Name**: ${fileData.fileName || 'Unnamed'}\n**Token**: \`${token}\`\n**Link**: [Access File](${link})\n**Time**: ${fileData.timestamp}`;
+          return `${index + 1}. **File Name**: ${fileData.fileName || 'Unnamed'}\n**Token**: \`${token}\`\n**Link**: [Access File](${link})\n**Type**: ${fileData.mimeType || 'Unknown Type'}\n**Size**: ${fileData.fileSize ? (fileData.fileSize / 1024).toFixed(2) + ' KB' : 'Unknown'}\n**Time**: ${fileData.timestamp}`;
         })
         .join('\n\n');
-
-      bot.sendMessage(chatId, `Stored files or batches:\n\n${fileList}`, { parse_mode: 'Markdown' });
-    } else {
-      bot.sendMessage(chatId, 'No files or batches stored.');
+      bot.sendMessage(msg.chat.id, fileList, { parse_mode: 'Markdown' });
     }
   });
 });
-
 // Handle /listfilenames command
 registerCommand(/\/listfilenames/, (msg) => {
   restrictAdminCommand(msg, () => {
@@ -282,16 +287,15 @@ registerCommand(/\/listfilenames/, (msg) => {
 // Handle /status command
 registerCommand(/\/status/, (msg) => {
   restrictAdminCommand(msg, () => {
-    const chatId = msg.chat.id;
-    bot.sendMessage(chatId, `Bot is running smoothly!`);
+    bot.sendMessage(msg.chat.id, `Bot is running and functional.`);
   });
 });
 
 // Handle /clearlogs command
 registerCommand(/\/clearlogs/, (msg) => {
   restrictAdminCommand(msg, () => {
-    fs.writeFileSync(logFilePath, ''); // Clear the log file
-    bot.sendMessage(msg.chat.id, 'Logs cleared!');
-    logAction('Logs cleared by admin.');
+    fs.truncateSync(logFilePath, 0);
+    bot.sendMessage(msg.chat.id, 'Logs have been cleared.');
+    logAction('Logs cleared');
   });
 });
