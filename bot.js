@@ -137,7 +137,7 @@ registerCommand(/\/helpadmin/, (msg) => {
   \n/sendfile <file_name> - Start a batch and send files to it
   \n/addfiletobatch <batch_token> - Add files to an existing batch
   \n/removefilefrombatch <batch_token> <file_index> - Remove a file from a batch
-  \n/listfiles - List all stored files or batches with details (File name, token, access link, type, size, edit and delete commands, time)
+  \n/listfiles - List all stored files or batches with details (File name, token, access link, type, size, edit and delete commands, time) with pagination
   \n/editfilename <token> <new_name> - Edit the name of a stored file
   \n/deletefile <token> - Delete a file or batch
   \n/bulkremove <file_numbers> - Remove multiple files by their order numbers (e.g., /bulkremove 1,3,5)
@@ -334,118 +334,116 @@ registerCommand(/\/addfiletobatch (\w{32})/, (msg, match) => {
   });
 });
 
+const PAGE_SIZE = 5; // Number of files per page
+const MAX_MESSAGE_LENGTH = 4000; // Safeguard to avoid exceeding Telegram's message length limit
+
+// State to track page number input requests for each user (chatId)
+const userState = {};
+
+// Helper function to format file info for a given page
+function formatFileInfo(fileTokens, startIndex, endIndex) {
+  return fileTokens.slice(startIndex, endIndex).map((token, index) => {
+    const fileData = fileStore[token];
+    const fileName = fileData.fileName || 'Unnamed';
+    const accessLink = `https://t.me/${botUsername}?start=${token}`;
+    const fileType = fileData.mimeType || 'Unknown Type';
+    const fileSize = fileData.fileSize
+      ? (fileData.fileSize / 1024 / 1024).toFixed(2) + ' MB'  // Convert to MB
+      : 'Unknown';
+    const timestamp = fileData.timestamp;
+
+    // File info formatted in Markdown
+    return `${startIndex + index + 1}. **File Name**: ${fileName}\n**Token**: \`${token}\`\n**Link**: [Access File](${accessLink})\n**Type**: ${fileType}\n**Size**: ${fileSize}\n**Edit Command**: [Edit File](tg://msg?text=/editfilename%20${token})\n**Delete Command**: [Delete File](tg://msg?text=/deletefile%20${token})\n**Time**: ${timestamp}`;
+  }).join('\n\n');
+}
+
 // Handle /listfiles command with pagination
 registerCommand(/\/listfiles/, (msg) => {
   restrictAdminCommand(msg, () => {
     const chatId = msg.chat.id;
     const fileTokens = Object.keys(fileStore);
+    const totalFiles = fileTokens.length;
 
-    if (fileTokens.length === 0) {
+    if (totalFiles === 0) {
       bot.sendMessage(chatId, 'No files or batches found.');
       return;
     }
 
-    const filesPerPage = 4000;
-    const pageCount = Math.ceil(fileTokens.length / filesPerPage);
+    const totalPages = Math.ceil(totalFiles / PAGE_SIZE);
 
-    // Function to generate a page of files
-    const generateFileListPage = (page) => {
-      const start = page * filesPerPage;
-      const end = Math.min(start + filesPerPage, fileTokens.length);
+    // Function to send the files for a specific page
+    function sendPage(page = 1, chatId) {
+      if (page < 1 || page > totalPages) return;
 
-      const fileList = fileTokens
-        .slice(start, end)
-        .map((token, index) => {
-          const fileData = fileStore[token];
-          const accessLink = `https://t.me/${botUsername}?start=${token}`;
-          const fileName = fileData.fileName || 'Unnamed';
-          const timestamp = fileData.timestamp;
+      const startIndex = (page - 1) * PAGE_SIZE;
+      const endIndex = Math.min(startIndex + PAGE_SIZE, totalFiles);
 
-          return `${index + 1}. **File Name**: ${fileName}\n**Token**: \`${token}\`\n**Link**: [Access File](${accessLink})\n**Time**: ${timestamp}`;
-        })
-        .join('\n\n');
+      const fileInfo = formatFileInfo(fileTokens, startIndex, endIndex);
 
-      return fileList;
-    };
+      // Generate buttons for all pages
+      const pageButtons = [];
+      for (let i = 1; i <= totalPages; i++) {
+        pageButtons.push({ text: `${i}`, callback_data: `page_${i}` });
+      }
 
-    // Send the first page
-    const sendPage = (page) => {
-      const fileList = generateFileListPage(page);
-
-      // Inline keyboard for pagination
       const inlineKeyboard = {
-        inline_keyboard: [],
+        inline_keyboard: [
+          pageButtons // All page numbers as buttons
+        ]
       };
 
-      if (page > 0) {
-        inlineKeyboard.inline_keyboard.push([{ text: '⬅️ Previous', callback_data: `listfiles_page_${page - 1}` }]);
-      }
-      if (page < pageCount - 1) {
-        inlineKeyboard.inline_keyboard.push([{ text: '➡️ Next', callback_data: `listfiles_page_${page + 1}` }]);
-      }
-
-      bot.sendMessage(chatId, fileList, {
-        parse_mode: 'Markdown',
-        reply_markup: inlineKeyboard,
-      });
-    };
-
-    sendPage(0); // Send the first page
-
-    // Handle pagination via callback queries
-    bot.on('callback_query', (query) => {
-      const data = query.data;
-
-      if (data.startsWith('listfiles_page_')) {
-        const page = parseInt(data.split('_').pop(), 10);
-        bot.answerCallbackQuery(query.id); // Acknowledge the query
-        sendPage(page);
-      }
-    });
-  });
-});
-// Handle /bulkremove command
-registerCommand(/\/bulkremove (.+)/, (msg, match) => {
-  restrictAdminCommand(msg, () => {
-    const chatId = msg.chat.id;
-    const fileNumbers = match[1]
-      .split(',')
-      .map((num) => parseInt(num.trim(), 10))
-      .filter((num) => !isNaN(num));
-
-    const fileTokens = Object.keys(fileStore);
-
-    if (fileNumbers.length === 0) {
-      bot.sendMessage(chatId, 'Please specify valid file numbers to remove.');
-      return;
+      // Send the page message with page number buttons
+      bot.sendMessage(chatId, `Stored files (Page ${page}/${totalPages}):\n\n${fileInfo}`, { parse_mode: 'Markdown', reply_markup: inlineKeyboard });
     }
 
-    const removedFiles = [];
-    const invalidFiles = [];
-
-    fileNumbers.forEach((fileNum) => {
-      const tokenIndex = fileNum - 1;
-      if (fileTokens[tokenIndex]) {
-        const token = fileTokens[tokenIndex];
-        delete fileStore[token];
-        removedFiles.push(fileNum);
-      } else {
-        invalidFiles.push(fileNum);
-      }
-    });
-
-    writeStorage(fileStore); // Save changes to storage
-
-    const response = [
-      removedFiles.length > 0 ? `Removed files: ${removedFiles.join(', ')}` : null,
-      invalidFiles.length > 0 ? `Invalid file numbers: ${invalidFiles.join(', ')}` : null,
-    ]
-      .filter((text) => text)
-      .join('\n');
-
-    bot.sendMessage(chatId, response || 'No files were removed.');
+    // Send the first page
+    sendPage(1, chatId);
   });
 });
+
+// Handle the callback query for page selection
+bot.on('callback_query', (callbackQuery) => {
+  const chatId = callbackQuery.message.chat.id;
+  const data = callbackQuery.data;
+
+  // If the user clicks on a page number button, send that page's files
+  if (data.startsWith('page_')) {
+    const page = parseInt(data.split('_')[1], 10);
+    sendPage(page, chatId); // Ensure chatId is passed here
+    bot.answerCallbackQuery(callbackQuery.id);  // Acknowledge the callback query
+  }
+});
+
+// Improved sendPage function with additional checks
+function sendPage(page, chatId) {
+  const fileTokens = Object.keys(fileStore);
+  const totalFiles = fileTokens.length;
+  const totalPages = Math.ceil(totalFiles / PAGE_SIZE);
+
+  // If page is out of bounds, handle it
+  if (page < 1 || page > totalPages) {
+    return;
+  }
+
+  const startIndex = (page - 1) * PAGE_SIZE;
+  const endIndex = Math.min(startIndex + PAGE_SIZE, totalFiles);
+
+  const fileInfo = formatFileInfo(fileTokens, startIndex, endIndex);
+
+  // Generate buttons for all pages
+  const pageButtons = [];
+  for (let i = 1; i <= totalPages; i++) {
+    pageButtons.push({ text: `${i}`, callback_data: `page_${i}` });
+  }
+
+  const inlineKeyboard = {
+    inline_keyboard: [
+      pageButtons // All page numbers as buttons
+    ]
+  };
+
+  bot.sendMessage(chatId, `Stored files (Page ${page}/${totalPages}):\n\n${fileInfo}`, { parse_mode: 'Markdown', reply_markup: inlineKeyboard });
+}
 
 // Handle /status command
 registerCommand(/\/status/, (msg) => {
