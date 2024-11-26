@@ -140,12 +140,14 @@ registerCommand(/\/helpadmin/, (msg) => {
   \n/listfiles - List all stored files or batches with details (File name, token, access link, type, size, edit and delete commands, time)
   \n/editfilename <token> <new_name> - Edit the name of a stored file
   \n/deletefile <token> - Delete a file or batch
+  \n/bulkremove <file_numbers> - Remove multiple files by their order numbers (e.g., /bulkremove 1,3,5)
   \n/status - Get bot status
   \n/clearlogs - Clear action logs`;
 
     bot.sendMessage(chatId, adminHelpMessage);
   });
 });
+
 
 // Handle /sendfile command
 registerCommand(/\/sendfile/, (msg) => {
@@ -240,7 +242,99 @@ registerCommand(/\/deletefile (\w{32})/, (msg, match) => {
     }
   });
 });
-// Handle /listfiles command
+// Handle /editfilename command
+registerCommand(/\/editfilename (\w{32}) (.+)/, (msg, match) => {
+  restrictAdminCommand(msg, () => {
+    const fileToken = match[1]; // Extract token from the command
+    const newFileName = match[2].trim(); // Extract the new file name
+
+    if (fileStore[fileToken]) {
+      const oldFileName = fileStore[fileToken].fileName || 'Unnamed';
+      fileStore[fileToken].fileName = newFileName; // Update the file name in storage
+      writeStorage(fileStore); // Save changes to the storage file
+
+      bot.sendMessage(
+        msg.chat.id,
+        `File name updated successfully.\n\n**Old Name**: ${oldFileName}\n**New Name**: ${newFileName}`,
+        { parse_mode: 'Markdown' }
+      );
+
+      logAction(`File name updated for token ${fileToken}: "${oldFileName}" → "${newFileName}"`);
+    } else {
+      bot.sendMessage(msg.chat.id, 'Invalid token. File or batch not found.');
+    }
+  });
+});
+// Handle /addfiletobatch command
+registerCommand(/\/addfiletobatch (\w{32})/, (msg, match) => {
+  restrictAdminCommand(msg, () => {
+    const batchToken = match[1]; // Extract the batch token from the command
+
+    if (fileStore[batchToken] && fileStore[batchToken].files) {
+      bot.sendMessage(
+        msg.chat.id,
+        `Batch found. Please send the file(s) you want to add to the batch named "${fileStore[batchToken].fileName}".`
+      );
+
+      // Temporarily store the batchToken for adding files
+      bot.once('message', (fileMsg) => {
+        if (fileMsg.document || fileMsg.photo || fileMsg.audio || fileMsg.video || fileMsg.voice || fileMsg.video_note) {
+          let fileId, fileName, mimeType, fileSize;
+
+          // Handle different types of files
+          if (fileMsg.document) {
+            fileId = fileMsg.document.file_id;
+            fileName = fileMsg.document.file_name || 'Unnamed Document';
+            mimeType = fileMsg.document.mime_type;
+            fileSize = fileMsg.document.file_size;
+          } else if (fileMsg.photo) {
+            fileId = fileMsg.photo[fileMsg.photo.length - 1].file_id; // The largest photo
+            fileName = 'Photo File';
+            mimeType = 'image/jpeg'; // Default for photos
+            fileSize = fileMsg.photo[fileMsg.photo.length - 1].file_size;
+          } else if (fileMsg.audio) {
+            fileId = fileMsg.audio.file_id;
+            fileName = fileMsg.audio.file_name || 'Unnamed Audio';
+            mimeType = fileMsg.audio.mime_type;
+            fileSize = fileMsg.audio.file_size;
+          } else if (fileMsg.video) {
+            fileId = fileMsg.video.file_id;
+            fileName = fileMsg.video.file_name || 'Unnamed Video';
+            mimeType = fileMsg.video.mime_type;
+            fileSize = fileMsg.video.file_size;
+          } else if (fileMsg.voice) {
+            fileId = fileMsg.voice.file_id;
+            fileName = 'Voice Message';
+            mimeType = 'audio/ogg'; // Default for voice
+            fileSize = fileMsg.voice.file_size;
+          } else if (fileMsg.video_note) {
+            fileId = fileMsg.video_note.file_id;
+            fileName = 'Video Note';
+            mimeType = 'video/mp4'; // Default for video notes
+            fileSize = fileMsg.video_note.file_size;
+          }
+
+          // Add the file to the batch
+          fileStore[batchToken].files.push({ fileId, fileName, mimeType, fileSize });
+          writeStorage(fileStore);
+
+          bot.sendMessage(
+            msg.chat.id,
+            `File added to batch "${fileStore[batchToken].fileName}". Token: \`${batchToken}\``,
+            { parse_mode: 'Markdown' }
+          );
+          logAction(`File added to batch: ${batchToken}`);
+        } else {
+          bot.sendMessage(msg.chat.id, 'Invalid file type. Please send a valid file.');
+        }
+      });
+    } else {
+      bot.sendMessage(msg.chat.id, 'Invalid batch token. Batch not found.');
+    }
+  });
+});
+
+// Handle /listfiles command with pagination
 registerCommand(/\/listfiles/, (msg) => {
   restrictAdminCommand(msg, () => {
     const chatId = msg.chat.id;
@@ -248,24 +342,108 @@ registerCommand(/\/listfiles/, (msg) => {
 
     if (fileTokens.length === 0) {
       bot.sendMessage(chatId, 'No files or batches found.');
-    } else {
+      return;
+    }
+
+    const filesPerPage = 4000;
+    const pageCount = Math.ceil(fileTokens.length / filesPerPage);
+
+    // Function to generate a page of files
+    const generateFileListPage = (page) => {
+      const start = page * filesPerPage;
+      const end = Math.min(start + filesPerPage, fileTokens.length);
+
       const fileList = fileTokens
+        .slice(start, end)
         .map((token, index) => {
           const fileData = fileStore[token];
           const accessLink = `https://t.me/${botUsername}?start=${token}`;
-          const editCommand = `tg://msg?text=/editfilename%20${token}`; // Edit file link
-          const deleteCommand = `tg://msg?text=/deletefile%20${token}`; // Delete file link
           const fileName = fileData.fileName || 'Unnamed';
-          const fileType = fileData.mimeType || 'Unknown Type';
-          const fileSize = fileData.fileSize ? (fileData.fileSize / 1024).toFixed(2) + ' KB' : 'Unknown';
           const timestamp = fileData.timestamp;
 
-          return `${index + 1}. **File Name**: ${fileName}\n**Token**: \`${token}\`\n**Link**: [Access File](${accessLink})\n**Type**: ${fileType}\n**Size**: ${fileSize}\n**Edit Command**: [Edit File](${editCommand})\n**Delete Command**: [Delete File](${deleteCommand})\n**Time**: ${timestamp}`;
+          return `${index + 1}. **File Name**: ${fileName}\n**Token**: \`${token}\`\n**Link**: [Access File](${accessLink})\n**Time**: ${timestamp}`;
         })
         .join('\n\n');
 
-      bot.sendMessage(chatId, `Stored files:\n\n${fileList}`, { parse_mode: 'Markdown' });
+      return fileList;
+    };
+
+    // Send the first page
+    const sendPage = (page) => {
+      const fileList = generateFileListPage(page);
+
+      // Inline keyboard for pagination
+      const inlineKeyboard = {
+        inline_keyboard: [],
+      };
+
+      if (page > 0) {
+        inlineKeyboard.inline_keyboard.push([{ text: '⬅️ Previous', callback_data: `listfiles_page_${page - 1}` }]);
+      }
+      if (page < pageCount - 1) {
+        inlineKeyboard.inline_keyboard.push([{ text: '➡️ Next', callback_data: `listfiles_page_${page + 1}` }]);
+      }
+
+      bot.sendMessage(chatId, fileList, {
+        parse_mode: 'Markdown',
+        reply_markup: inlineKeyboard,
+      });
+    };
+
+    sendPage(0); // Send the first page
+
+    // Handle pagination via callback queries
+    bot.on('callback_query', (query) => {
+      const data = query.data;
+
+      if (data.startsWith('listfiles_page_')) {
+        const page = parseInt(data.split('_').pop(), 10);
+        bot.answerCallbackQuery(query.id); // Acknowledge the query
+        sendPage(page);
+      }
+    });
+  });
+});
+// Handle /bulkremove command
+registerCommand(/\/bulkremove (.+)/, (msg, match) => {
+  restrictAdminCommand(msg, () => {
+    const chatId = msg.chat.id;
+    const fileNumbers = match[1]
+      .split(',')
+      .map((num) => parseInt(num.trim(), 10))
+      .filter((num) => !isNaN(num));
+
+    const fileTokens = Object.keys(fileStore);
+
+    if (fileNumbers.length === 0) {
+      bot.sendMessage(chatId, 'Please specify valid file numbers to remove.');
+      return;
     }
+
+    const removedFiles = [];
+    const invalidFiles = [];
+
+    fileNumbers.forEach((fileNum) => {
+      const tokenIndex = fileNum - 1;
+      if (fileTokens[tokenIndex]) {
+        const token = fileTokens[tokenIndex];
+        delete fileStore[token];
+        removedFiles.push(fileNum);
+      } else {
+        invalidFiles.push(fileNum);
+      }
+    });
+
+    writeStorage(fileStore); // Save changes to storage
+
+    const response = [
+      removedFiles.length > 0 ? `Removed files: ${removedFiles.join(', ')}` : null,
+      invalidFiles.length > 0 ? `Invalid file numbers: ${invalidFiles.join(', ')}` : null,
+    ]
+      .filter((text) => text)
+      .join('\n');
+
+    bot.sendMessage(chatId, response || 'No files were removed.');
   });
 });
 
