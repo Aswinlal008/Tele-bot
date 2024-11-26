@@ -155,15 +155,26 @@ registerCommand(/\/sendfile/, (msg) => {
     bot.sendMessage(msg.chat.id, 'Please reply with a name for the file/batch.');
     bot.once('message', (titleMsg) => {
       const fileName = titleMsg.text.trim();
+      
+      // Generate a new batch token only when the /sendfile command is given
       batchToken = crypto.randomBytes(16).toString('hex');
+      
+      // Store the batch details
       fileStore[batchToken] = {
         files: [],
         fileName,
         chatId: msg.chat.id,
         timestamp: getCurrentTime()
       };
+
+      // Save to storage
+      writeStorage(fileStore);
+      
+      // Send confirmation
       bot.sendMessage(msg.chat.id, `Batch mode started with name "${fileName}". Use token: \`${batchToken}\``);
       logAction(`Batch created with token: ${batchToken} and name: ${fileName}`);
+      
+      // Prompt the user to send files
       bot.sendMessage(msg.chat.id, `Now send the file(s) to add to the batch.`);
     });
   });
@@ -173,6 +184,7 @@ registerCommand(/\/sendfile/, (msg) => {
 bot.on('message', (msg) => {
   if (msg.document || msg.photo || msg.audio || msg.video || msg.voice || msg.video_note) {
     const chatId = msg.chat.id;
+    
     if (isAdmin(msg)) {
       let fileId, fileName, mimeType, fileSize;
 
@@ -209,16 +221,20 @@ bot.on('message', (msg) => {
         fileSize = msg.video_note.file_size;
       }
 
-      // Store the file in batch or as a single file
+      // Add the file to the batch or store as a standalone file
       if (batchToken && fileStore[batchToken]) {
+        // Add the file to the batch
         fileStore[batchToken].files.push({ fileId, fileName, mimeType, fileSize });
-        writeStorage(fileStore);
+        writeStorage(fileStore); // Update storage with new file
+
         bot.sendMessage(chatId, `File added to batch. Token: ${batchToken}`);
         logAction(`File added to batch: ${batchToken}`);
       } else {
+        // Store as a standalone file if no batch is in progress
         const fileToken = crypto.randomBytes(16).toString('hex');
         fileStore[fileToken] = { fileId, fileName, mimeType, fileSize, chatId, timestamp: getCurrentTime() };
         writeStorage(fileStore);
+
         bot.sendMessage(chatId, `File stored. Token: ${fileToken}`);
         logAction(`File stored: ${fileToken}`);
       }
@@ -227,6 +243,8 @@ bot.on('message', (msg) => {
     }
   }
 });
+
+
 
 // Handle /deletefile command
 registerCommand(/\/deletefile (\w{32})/, (msg, match) => {
