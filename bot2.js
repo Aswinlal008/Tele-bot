@@ -8,7 +8,8 @@ const bot = new TelegramBot(token, { polling: true });
 
 // Define conversation states
 const FILENAME = 'FILENAME';
-const TEXT = 'TEXT';
+const FILECONTENT = 'FILECONTENT';
+const WAIT_FOR_MOVIE_NAME = 'WAIT_FOR_MOVIE_NAME';
 
 let userData = {};
 
@@ -21,11 +22,21 @@ bot.onText(/\/start/, (msg) => {
   const chatId = msg.chat.id;
   bot.sendMessage(chatId, 'Welcome! I can help you with these commands:\n' +
     '/searchmovie <movie name> - Search for a movie\n' +
-    '/searchseries <series name> - Search for a series\n' +
     '/newfile - Create a new text file');
 });
 
-// New File Command: Start the text file creation process
+// Command: /help
+bot.onText(/\/help/, (msg) => {
+  const chatId = msg.chat.id;
+  bot.sendMessage(chatId, 'Here are the available commands you can use:\n\n' +
+    '/start - Get a welcome message and an overview of the available commands.\n' +
+    '/searchmovie <movie name> - Search for a movie by name and get details like title, rating, and genre.\n' +
+    '/newfile - Start the process of creating a new text file. You can set the file name and content.\n' +
+    '/help - Show this help message with information on how to use the bot.\n' +
+    'Simply type the command and follow the instructions!');
+});
+
+// Command: /newfile
 bot.onText(/\/newfile/, (msg) => {
   const chatId = msg.chat.id;
   bot.sendMessage(chatId, 'Let\'s start over! Tell me the name for the new file.')
@@ -34,57 +45,73 @@ bot.onText(/\/newfile/, (msg) => {
     });
 });
 
-// Search Movie Command
-bot.onText(/\/searchmovie/, (msg) => {
+// Handle file name input
+bot.on('message', (msg) => {
   const chatId = msg.chat.id;
-  bot.sendMessage(chatId, 'Please provide the name of the movie you want to search for.');
-  userData[chatId] = { state: 'WAIT_FOR_MOVIE_NAME' }; // Wait for the movie name
-});
+  const userState = userData[chatId]?.state;
 
-// Handle movie name input and fetch movie details
-bot.on('message', async (msg) => {
-  const chatId = msg.chat.id;
-  const text = msg.text;
+  // If the user is in the FILENAME state (creating a file)
+  if (userState === FILENAME) {
+    const fileName = msg.text;
+    bot.sendMessage(chatId, `File name set to: ${fileName}. Now, please send me the content for the file.`)
+      .then(() => {
+        userData[chatId] = { state: FILECONTENT, fileName }; // Store file name and transition to content state
+      });
+  }
 
-  if (userData[chatId]) {
-    const state = userData[chatId].state;
+  // If the user is in the FILECONTENT state (adding content to file)
+  if (userState === FILECONTENT) {
+    const fileContent = msg.text;
+    const fileName = userData[chatId]?.fileName;
 
-    if (state === 'WAIT_FOR_MOVIE_NAME') {
-      const movieName = text.trim(); // Extract the movie name
+    // Create the content as a Buffer (an in-memory file)
+    const buffer = Buffer.from(fileContent, 'utf-8');
 
-      try {
-        const response = await axios.get(TMDB_API_URL, {
-          params: {
-            api_key: TMDB_API_KEY, // API key for TMDb
-            query: movieName, // Movie name
-            language: 'en-US', // Language of the response
-            page: 1, // First page of results
-          },
-        });
+    // Send the in-memory file directly to the user
+    bot.sendDocument(chatId, buffer, {}, { filename: `${fileName}.txt`, contentType: 'text/plain' })
+      .then(() => {
+        bot.sendMessage(chatId, `File "${fileName}.txt" has been created successfully!`); // Confirmation message
+      })
+      .catch((error) => {
+        bot.sendMessage(chatId, `Error sending the file: ${error.message}`);
+      });
 
-        const movie = response.data.results[0]; // Get the first result
-        if (movie) {
-          // Extract movie details
-          const movieDetails = `
-Title: ${movie.title} [${movie.release_date.split('-')[0]}]
-Rating ⭐️: ${movie.vote_average} / 10
-Genre: ${movie.genre_ids.map(id => getGenreName(id)).join('#') || 'Unknown'}
-Language: ${movie.original_language.toUpperCase() === 'EN' ? '#English' : '#Other'}
-          `;
+    // Reset the state after the file is created and sent
+    userData[chatId] = { state: null };
+  }
 
-          // Send Movie Details and Poster URL
-          bot.sendMessage(chatId, movieDetails);
-          bot.sendPhoto(chatId, `https://image.tmdb.org/t/p/w500${movie.poster_path}`); // Send the movie poster image
-        } else {
-          bot.sendMessage(chatId, `Sorry, I couldn't find details for "${movieName}".`);
-        }
-      } catch (error) {
-        bot.sendMessage(chatId, `Error searching for the movie: ${error.message}`);
+  // Handle movie search (user in WAIT_FOR_MOVIE_NAME state)
+  if (userState === WAIT_FOR_MOVIE_NAME) {
+    const movieName = msg.text.trim(); // Extract the movie name
+
+    // Fetch movie details from TMDb API
+    axios.get(TMDB_API_URL, {
+      params: {
+        api_key: TMDB_API_KEY, // API key for TMDb
+        query: movieName, // Movie name
+        language: 'en-US', // Language of the response
+        page: 1, // First page of results
+      },
+    })
+    .then((response) => {
+      const movie = response.data.results[0]; // Get the first result
+      if (movie) {
+        // Extract movie details
+        const movieDetails = `Title: ${movie.title} [${movie.release_date.split('-')[0]}]\nRating ⭐️: ${movie.vote_average} / 10\nGenre: ${movie.genre_ids.map(id => getGenreName(id)).join('#') || 'Unknown'}\nLanguage: ${movie.original_language.toUpperCase() === 'EN' ? '#English' : '#Other'}`;
+
+        // Send Movie Details and Poster URL
+        bot.sendMessage(chatId, movieDetails);
+        bot.sendPhoto(chatId, `https://image.tmdb.org/t/p/w500${movie.poster_path}`); // Send the movie poster image
+      } else {
+        bot.sendMessage(chatId, `Sorry, I couldn't find details for "${movieName}".`);
       }
+    })
+    .catch((error) => {
+      bot.sendMessage(chatId, `Error searching for the movie: ${error.message}`);
+    });
 
-      // End the movie search state
-      delete userData[chatId];
-    }
+    // End the movie search state
+    delete userData[chatId]; // Reset the state
   }
 });
 
@@ -97,6 +124,22 @@ function getGenreName(id) {
     35: 'Comedy',
     18: 'Drama',
     53: 'Thriller',
+    27: 'Horror',
+    80: 'Crime',
+    99: 'Documentary',
+    10402: 'Music',
+    10749: 'Romance',
+    14: 'Fantasy',
+    36: 'History',
+    10751: 'Family',
+    10752: 'War',
+    37: 'Western',
+    10763: 'News',
+    10764: 'Reality',
+    10765: 'Sci-Fi & Fantasy',
+    10766: 'Soap',
+    10767: 'Talk',
+    10768: 'War & Politics',
     // Add more genres as per TMDb's genre IDs
   };
 

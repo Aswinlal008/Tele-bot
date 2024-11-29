@@ -84,11 +84,16 @@ registerCommand(/\/start(.*)/, (msg, match) => {
   const chatId = msg.chat.id;
   const token = match[1].trim();
 
-  // If no token is provided, send a welcome message with a contact button
+  // If no token is provided, send a welcome message with a contact button and join group link
   if (!token) {
     const welcomeMessage = 'Welcome to the bot! Please provide a valid token to access files.';
     
-    // Creating an inline keyboard with a contact button
+    // Creating an inline keyboard with contact and join group buttons
+    const joinGroupButton = {
+      text: 'Join Our Channel/Group',  // Button text
+      url: 'https://t.me/Discussionclouds' // Replace with your channel or group link
+    };
+
     const contactButton = {
       text: 'Contact Support',  // Button text
       url: 'https://t.me/aswinlalus' // Link to BotFather (replace with your contact link or support link)
@@ -96,7 +101,8 @@ registerCommand(/\/start(.*)/, (msg, match) => {
     
     const inlineKeyboard = {
       inline_keyboard: [
-        [contactButton]  // Adding the button to the keyboard
+        [joinGroupButton],  // Adding the join group button to the first row
+        [contactButton]  // Adding the contact button to the second row
       ]
     };
 
@@ -141,14 +147,15 @@ registerCommand(/\/helpadmin/, (msg) => {
   \n/editfilename <token> <new_name> - Edit the name of a stored file
   \n/deletefile <token> - Delete a file or batch
   \n/bulkremove <file_numbers> - Remove multiple files by their order numbers (e.g., /bulkremove 1,3,5)
-  \n/movielist - List all stored movie files with details (File name, token, access link)
   \n/status - Get bot status
-  \n/clearlogs - Clear action logs`;
-
+  \n/clearlogs - Clear action logs
+  \n/exportfiles - Generate and download a file containing the details of all stored files or batches, including names, tokens, access links, types, sizes, and timestamps.
+  \n/broadcast - Send a message to all users
+  \n/useractivity - View a list of user activities (last 50 actions)`;
+  
     bot.sendMessage(chatId, adminHelpMessage);
   });
 });
-
 
 // Handle /sendfile command
 registerCommand(/\/sendfile/, (msg) => {
@@ -463,115 +470,141 @@ function sendPage(page, chatId) {
 
   bot.sendMessage(chatId, `Stored files (Page ${page}/${totalPages}):\n\n${fileInfo}`, { parse_mode: 'Markdown', reply_markup: inlineKeyboard });
 }
-// Handle /movielist command with pagination
-registerCommand(/\/movielist/, (msg) => {
+// Handle /exportfiles command
+registerCommand(/\/exportfiles/, (msg) => {
   restrictAdminCommand(msg, () => {
     const chatId = msg.chat.id;
     const fileTokens = Object.keys(fileStore);
-    const totalFiles = fileTokens.length;
 
-    if (totalFiles === 0) {
-      bot.sendMessage(chatId, 'No movies found.');
+    if (fileTokens.length === 0) {
+      bot.sendMessage(chatId, 'No files or batches found to export.');
       return;
     }
 
-    const totalPages = Math.ceil(totalFiles / PAGE_SIZE);
+    // File content generation
+    let fileContent = 'File Name,Token,Access Link,Type,Size,Edit Command,Delete Command,Time\n';
+    fileTokens.forEach((token) => {
+      const fileData = fileStore[token];
+      const fileName = fileData.fileName || 'Unnamed';
+      const accessLink = `https://t.me/${botUsername}?start=${token}`;
+      const fileType = fileData.mimeType || 'Unknown Type';
+      const fileSize = fileData.fileSize
+        ? (fileData.fileSize / 1024 / 1024).toFixed(2) + ' MB'
+        : 'Unknown';
+      const timestamp = fileData.timestamp;
+      const editCommand = `/editfilename ${token}`;
+      const deleteCommand = `/deletefile ${token}`;
 
-    // Function to format movie info for a specific page
-    function formatMovieInfo(fileTokens, startIndex, endIndex) {
-      return fileTokens.slice(startIndex, endIndex).map((token, index) => {
-        const fileData = fileStore[token];
-        const fileName = fileData.fileName || 'Unnamed Movie';
-        const accessLink = `https://t.me/${botUsername}?start=${token}`;
-        const fileSize = fileData.fileSize
-          ? (fileData.fileSize / 1024 / 1024).toFixed(2) + ' MB' // Convert to MB
-          : 'Unknown';
-        const timestamp = fileData.timestamp;
+      // Add file details to content
+      fileContent += `"${fileName}","${token}","${accessLink}","${fileType}","${fileSize}","${editCommand}","${deleteCommand}","${timestamp}"\n`;
+    });
 
-        // Movie info formatted in Markdown
-        return `${startIndex + index + 1}. **Movie Name**: ${fileName}\n**Link**: [Access Movie](${accessLink})\n**Size**: ${fileSize}\n**Uploaded On**: ${timestamp}`;
-      }).join('\n\n');
-    }
+    // Save content to a file
+    const filePath = './exported_files.csv';
+    fs.writeFileSync(filePath, fileContent);
 
-    // Function to send the movies for a specific page
-    function sendMoviePage(page = 1) {
-      const startIndex = (page - 1) * PAGE_SIZE;
-      const endIndex = Math.min(startIndex + PAGE_SIZE, totalFiles);
-
-      const movieInfo = formatMovieInfo(fileTokens, startIndex, endIndex);
-
-      // Generate buttons for all pages
-      const pageButtons = [];
-      for (let i = 1; i <= totalPages; i++) {
-        pageButtons.push({ text: `${i}`, callback_data: `movie_page_${i}` });
-      }
-
-      const inlineKeyboard = {
-        inline_keyboard: [
-          pageButtons // All page numbers as buttons
-        ]
-      };
-
-      bot.sendMessage(
-        chatId,
-        `Movies List (Page ${page}/${totalPages}):\n\n${movieInfo}`,
-        { parse_mode: 'Markdown', reply_markup: inlineKeyboard }
-      );
-    }
-
-    // Send the first page of movies
-    sendMoviePage(1);
+    // Send the file to the admin
+    bot.sendDocument(chatId, filePath, {}, { filename: 'exported_files.csv' })
+      .then(() => {
+        logAction('File list exported and sent.');
+        bot.sendMessage(chatId, 'Export completed. File list sent successfully.');
+        // Optionally delete the file after sending
+        fs.unlinkSync(filePath);
+      })
+      .catch((error) => {
+        console.error('Error sending file:', error);
+        bot.sendMessage(chatId, 'Failed to export file list.');
+      });
   });
 });
+// Store user chat IDs (for example, dynamically collected when users interact with the bot)
+let registeredUsers = []; // Replace with your actual user database or array
 
-// Handle callback queries for /movielist pagination
-bot.on('callback_query', (callbackQuery) => {
-  const chatId = callbackQuery.message.chat.id;
-  const data = callbackQuery.data;
+// Middleware to restrict admin commands
+function restrictAdminCommand(msg, callback) {
+  const adminIds = [803543058];
+  if (adminIds.includes(msg.from.id)) {
+    callback();
+  } else {
+    bot.sendMessage(msg.chat.id, "Unauthorized access: This command is restricted to admins.");
+  }
+}
 
-  if (data.startsWith('movie_page_')) {
-    const page = parseInt(data.split('_')[2], 10);
-    const fileTokens = Object.keys(fileStore);
-    const totalFiles = fileTokens.length;
-    const totalPages = Math.ceil(totalFiles / PAGE_SIZE);
+// Handle /broadcast command
+registerCommand(/\/broadcast/, (msg) => {
+  restrictAdminCommand(msg, () => {
+    const chatId = msg.chat.id;
 
-    // If the page is out of bounds, do nothing
-    if (page < 1 || page > totalPages) return;
-
-    // Format and send the requested movie page
-    function sendMoviePage(page) {
-      const startIndex = (page - 1) * PAGE_SIZE;
-      const endIndex = Math.min(startIndex + PAGE_SIZE, totalFiles);
-
-      const movieInfo = fileTokens.slice(startIndex, endIndex).map((token, index) => {
-        const fileData = fileStore[token];
-        const fileName = fileData.fileName || 'Unnamed Movie';
-        const accessLink = `https://t.me/${botUsername}?start=${token}`;
-        const fileSize = fileData.fileSize
-          ? (fileData.fileSize / 1024 / 1024).toFixed(2) + ' MB' // Convert to MB
-          : 'Unknown';
-        const timestamp = fileData.timestamp;
-
-        return `${startIndex + index + 1}. **Movie Name**: ${fileName}\n**Link**: [Access Movie](${accessLink})\n**Size**: ${fileSize}\n**Uploaded On**: ${timestamp}`;
-      }).join('\n\n');
-
-      // Generate inline keyboard for page navigation
-      const pageButtons = Array.from({ length: totalPages }, (_, i) => ({
-        text: `${i + 1}`,
-        callback_data: `movie_page_${i + 1}`
-      }));
-
-      bot.editMessageText(`Movies List (Page ${page}/${totalPages}):\n\n${movieInfo}`, {
-        chat_id: chatId,
-        message_id: callbackQuery.message.message_id,
-        parse_mode: 'Markdown',
-        reply_markup: { inline_keyboard: [pageButtons] }
-      });
+    if (!msg.reply_to_message) {
+      bot.sendMessage(chatId, "Please reply to the message you want to broadcast.");
+      return;
     }
 
-    sendMoviePage(page);
-    bot.answerCallbackQuery(callbackQuery.id);
+    const messageToBroadcast = msg.reply_to_message;
+
+    // Send the message to all registered users
+    let successCount = 0;
+    let failureCount = 0;
+
+    registeredUsers.forEach((userId) => {
+      bot.copyMessage(userId, chatId, messageToBroadcast.message_id)
+        .then(() => successCount++)
+        .catch(() => failureCount++);
+    });
+
+    // Inform the admin of the broadcast status
+    setTimeout(() => {
+      bot.sendMessage(
+        chatId,
+        `Broadcast complete:\n✅ Sent to: ${successCount} users\n❌ Failed to send to: ${failureCount} users`
+      );
+    }, 3000); // Adjust the delay as needed for larger broadcasts
+  });
+});
+// Store user activity logs
+let userActivityLogs = []; // Replace this with a persistent database if necessary
+
+// Function to log user activity
+function logUserActivity(userId, username, action, time = new Date()) {
+  userActivityLogs.push({
+    userId,
+    username: username || "Unknown",
+    action,
+    time,
+  });
+
+  // Limit log size (optional)
+  if (userActivityLogs.length > 1000) {
+    userActivityLogs.shift(); // Remove oldest log if the limit is reached
   }
+}
+
+// Example: Call this function in every command or user interaction
+registerCommand(/.*/, (msg) => {
+  const username = msg.from.username || `${msg.from.first_name} ${msg.from.last_name || ""}`;
+  logUserActivity(msg.from.id, username.trim(), `Used command: ${msg.text}`);
+});
+// Admin command to view user activity
+registerCommand(/\/useractivity/, (msg) => {
+  restrictAdminCommand(msg, () => {
+    const chatId = msg.chat.id;
+
+    if (userActivityLogs.length === 0) {
+      bot.sendMessage(chatId, "No user activity logs available.");
+      return;
+    }
+
+    // Format logs into a message
+    const logMessage = userActivityLogs
+      .slice(-50) // Show only the last 50 logs for readability
+      .map((log, index) => {
+        const timeString = new Date(log.time).toLocaleString();
+        return `${index + 1}. [${timeString}] ${log.username} (${log.userId}) - ${log.action}`;
+      })
+      .join("\n");
+
+    bot.sendMessage(chatId, `User Activity Logs (Last 50):\n\n${logMessage}`);
+  });
 });
 
 // Handle /status command
