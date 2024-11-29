@@ -141,6 +141,7 @@ registerCommand(/\/helpadmin/, (msg) => {
   \n/editfilename <token> <new_name> - Edit the name of a stored file
   \n/deletefile <token> - Delete a file or batch
   \n/bulkremove <file_numbers> - Remove multiple files by their order numbers (e.g., /bulkremove 1,3,5)
+  \n/movielist - List all stored movie files with details (File name, token, access link)
   \n/status - Get bot status
   \n/clearlogs - Clear action logs`;
 
@@ -462,6 +463,116 @@ function sendPage(page, chatId) {
 
   bot.sendMessage(chatId, `Stored files (Page ${page}/${totalPages}):\n\n${fileInfo}`, { parse_mode: 'Markdown', reply_markup: inlineKeyboard });
 }
+// Handle /movielist command with pagination
+registerCommand(/\/movielist/, (msg) => {
+  restrictAdminCommand(msg, () => {
+    const chatId = msg.chat.id;
+    const fileTokens = Object.keys(fileStore);
+    const totalFiles = fileTokens.length;
+
+    if (totalFiles === 0) {
+      bot.sendMessage(chatId, 'No movies found.');
+      return;
+    }
+
+    const totalPages = Math.ceil(totalFiles / PAGE_SIZE);
+
+    // Function to format movie info for a specific page
+    function formatMovieInfo(fileTokens, startIndex, endIndex) {
+      return fileTokens.slice(startIndex, endIndex).map((token, index) => {
+        const fileData = fileStore[token];
+        const fileName = fileData.fileName || 'Unnamed Movie';
+        const accessLink = `https://t.me/${botUsername}?start=${token}`;
+        const fileSize = fileData.fileSize
+          ? (fileData.fileSize / 1024 / 1024).toFixed(2) + ' MB' // Convert to MB
+          : 'Unknown';
+        const timestamp = fileData.timestamp;
+
+        // Movie info formatted in Markdown
+        return `${startIndex + index + 1}. **Movie Name**: ${fileName}\n**Link**: [Access Movie](${accessLink})\n**Size**: ${fileSize}\n**Uploaded On**: ${timestamp}`;
+      }).join('\n\n');
+    }
+
+    // Function to send the movies for a specific page
+    function sendMoviePage(page = 1) {
+      const startIndex = (page - 1) * PAGE_SIZE;
+      const endIndex = Math.min(startIndex + PAGE_SIZE, totalFiles);
+
+      const movieInfo = formatMovieInfo(fileTokens, startIndex, endIndex);
+
+      // Generate buttons for all pages
+      const pageButtons = [];
+      for (let i = 1; i <= totalPages; i++) {
+        pageButtons.push({ text: `${i}`, callback_data: `movie_page_${i}` });
+      }
+
+      const inlineKeyboard = {
+        inline_keyboard: [
+          pageButtons // All page numbers as buttons
+        ]
+      };
+
+      bot.sendMessage(
+        chatId,
+        `Movies List (Page ${page}/${totalPages}):\n\n${movieInfo}`,
+        { parse_mode: 'Markdown', reply_markup: inlineKeyboard }
+      );
+    }
+
+    // Send the first page of movies
+    sendMoviePage(1);
+  });
+});
+
+// Handle callback queries for /movielist pagination
+bot.on('callback_query', (callbackQuery) => {
+  const chatId = callbackQuery.message.chat.id;
+  const data = callbackQuery.data;
+
+  if (data.startsWith('movie_page_')) {
+    const page = parseInt(data.split('_')[2], 10);
+    const fileTokens = Object.keys(fileStore);
+    const totalFiles = fileTokens.length;
+    const totalPages = Math.ceil(totalFiles / PAGE_SIZE);
+
+    // If the page is out of bounds, do nothing
+    if (page < 1 || page > totalPages) return;
+
+    // Format and send the requested movie page
+    function sendMoviePage(page) {
+      const startIndex = (page - 1) * PAGE_SIZE;
+      const endIndex = Math.min(startIndex + PAGE_SIZE, totalFiles);
+
+      const movieInfo = fileTokens.slice(startIndex, endIndex).map((token, index) => {
+        const fileData = fileStore[token];
+        const fileName = fileData.fileName || 'Unnamed Movie';
+        const accessLink = `https://t.me/${botUsername}?start=${token}`;
+        const fileSize = fileData.fileSize
+          ? (fileData.fileSize / 1024 / 1024).toFixed(2) + ' MB' // Convert to MB
+          : 'Unknown';
+        const timestamp = fileData.timestamp;
+
+        return `${startIndex + index + 1}. **Movie Name**: ${fileName}\n**Link**: [Access Movie](${accessLink})\n**Size**: ${fileSize}\n**Uploaded On**: ${timestamp}`;
+      }).join('\n\n');
+
+      // Generate inline keyboard for page navigation
+      const pageButtons = Array.from({ length: totalPages }, (_, i) => ({
+        text: `${i + 1}`,
+        callback_data: `movie_page_${i + 1}`
+      }));
+
+      bot.editMessageText(`Movies List (Page ${page}/${totalPages}):\n\n${movieInfo}`, {
+        chat_id: chatId,
+        message_id: callbackQuery.message.message_id,
+        parse_mode: 'Markdown',
+        reply_markup: { inline_keyboard: [pageButtons] }
+      });
+    }
+
+    sendMoviePage(page);
+    bot.answerCallbackQuery(callbackQuery.id);
+  }
+});
 
 // Handle /status command
 registerCommand(/\/status/, (msg) => {
