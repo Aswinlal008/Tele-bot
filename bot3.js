@@ -1,4 +1,5 @@
 const TelegramBot = require('node-telegram-bot-api');
+const fs = require('fs');
 
 // Your bot's token
 const token = '6687867709:AAETARF0SueDToxrizRDGBknAa3hujofNck'; // Replace with your bot token
@@ -6,63 +7,72 @@ const bot = new TelegramBot(token, { polling: true });
 
 // Simulated databases
 let posts = {};
-let favorites = {};
-let activeFlows = {}; // Track active post creation flows for each user
+let favorites = loadFavorites();
+let activeFlows = {};
 
 // Default reply markup with "Create Post" and "Favorites" options
 const mainMenu = {
   reply_markup: {
     keyboard: [
-      ['📃Create Post', '🌟Favorites'], // Row 1 with Create Post and Favorites
-      ['Back'],  // Row with Back button to return to the main menu
+      ['📃Create Post', '🌟Favorites'],
+      ['Back'],
     ],
-    resize_keyboard: true, // Resize the keyboard to fit the screen
+    resize_keyboard: true,
   },
 };
 
-// Define the custom menu for post types with a regular keyboard
 const postTypeMenu = {
   reply_markup: {
     keyboard: [
-      ['Text', 'Photo'],  // Row 1 with Text and Photo
-      ['GIF', 'Video'],   // Row 2 with GIF and Video
-      ['Stickers'],       // Row 3 with Stickers
-      ['Back'],           // Row with Back button to return to main menu
+      ['Text', 'Photo'],
+      ['GIF', 'Video'],
+      ['Stickers'],
+      ['Back'],
     ],
-    resize_keyboard: true, // Resize the keyboard to fit the screen
+    resize_keyboard: true,
   },
 };
 
-// Define the "Cancel" and "Back" buttons
 const cancelBackMenu = {
   reply_markup: {
-    keyboard: [
-      ['Cancel', 'Back'], // Options to cancel or go back
-    ],
-    resize_keyboard: true, // Resize the keyboard to fit the screen
+    keyboard: [['Cancel', 'Back']],
+    resize_keyboard: true,
   },
 };
 
 // Start command handler
-bot.onText(/\/start(?: (.+))?/, (msg) => {
+bot.onText(/\/start/, (msg) => {
   const chatId = msg.chat.id;
   bot.sendMessage(chatId, 'Welcome! Choose an option:', mainMenu);
 });
 
-// Handle user messages from the main menu (Create Post and Favorites)
+// Handle /help command
+bot.onText(/\/help/, (msg) => {
+  const chatId = msg.chat.id;
+  const helpMessage = `
+Welcome to the Bot! Here are the commands and features:
+
+1. */start*: Start the bot and see the main menu.
+2. *📃Create Post*: Create a new post by choosing a type (Text, Photo, GIF, Video, Stickers).
+3. *🌟Favorites*: View your favorite posts.
+4. */post {postId}*: View a specific post by its ID (e.g., /post abc123).
+5. */cancel*: Cancel the current action and return to the main menu.
+`;
+  bot.sendMessage(chatId, helpMessage);
+});
+
+// Main menu handler
 bot.on('message', (msg) => {
   const chatId = msg.chat.id;
   const text = msg.text;
 
   if (text === '📃Create Post') {
-    // Prevent starting a new post creation if a post creation flow is active
     if (activeFlows[chatId]) {
-      bot.sendMessage(chatId, 'You are already in the middle of creating a post. Please finish or cancel the current post creation before starting a new one.');
+      bot.sendMessage(chatId, 'You are already in the middle of creating a post.');
       return;
     }
-
     bot.sendMessage(chatId, 'Choose a type of post to create:', postTypeMenu);
-    activeFlows[chatId] = 'postTypeSelection'; // Track that the user is selecting a post type
+    activeFlows[chatId] = 'postTypeSelection';
   } else if (text === '🌟Favorites') {
     handleFavoritesMenu(chatId);
   } else if (text === 'Back') {
@@ -70,33 +80,31 @@ bot.on('message', (msg) => {
   } else if (['Text', 'Photo', 'GIF', 'Video', 'Stickers'].includes(text)) {
     if (activeFlows[chatId] === 'postTypeSelection') {
       handlePostCreation(chatId, text.toLowerCase());
-      activeFlows[chatId] = 'postCreation'; // Track that the user is in the post creation process
+      activeFlows[chatId] = 'postCreation';
     } else {
-      bot.sendMessage(chatId, 'Something went wrong. Please start the post creation again.');
+      bot.sendMessage(chatId, 'Something went wrong. Please start again.');
     }
   } else if (text === '/cancel') {
     returnToMainMenu(chatId);
   }
 });
 
-// Function to handle post creation based on type
+// Handle post creation
 function handlePostCreation(chatId, type) {
   const typeMessages = {
     text: 'Please provide the text content:',
-    photo: 'Please send the photo you want to attach.',
-    gif: 'Please send the GIF you want to attach.',
-    video: 'Please send the video you want to attach.',
+    photo: 'Please send the photo you want to attach (with or without a caption).',
+    gif: 'Please send the GIF you want to attach (with or without a caption).',
+    video: 'Please send the video you want to attach (with or without a caption).',
     stickers: 'Please send the sticker you want to attach.',
   };
 
-  // Remove keyboard to allow users to send content
   bot.sendMessage(chatId, `You selected: ${capitalizeFirstLetter(type)}.`, {
     reply_markup: { remove_keyboard: true },
   });
   bot.sendMessage(chatId, typeMessages[type]);
 
-  // Listen for the corresponding type of content
-  const onceListener = {
+  const listenerType = {
     text: 'message',
     photo: 'photo',
     gif: 'animation',
@@ -104,13 +112,13 @@ function handlePostCreation(chatId, type) {
     stickers: 'sticker',
   }[type];
 
-  bot.once(onceListener, (msg) => {
-    let content = getContent(type, msg);
-    askForLinks(chatId, content, type);
+  bot.once(listenerType, (msg) => {
+    const content = getContent(type, msg);
+    const caption = msg.caption || null;
+    askForLinks(chatId, { content, caption }, type);
   });
 }
 
-// Function to get content based on post type
 function getContent(type, msg) {
   const contentExtractors = {
     text: () => msg.text.trim(),
@@ -120,109 +128,110 @@ function getContent(type, msg) {
     stickers: () => msg.sticker.file_id,
   };
 
-  return contentExtractors[type] ? contentExtractors[type]() : null;
+  return contentExtractors[type]();
 }
 
-// Function to ask for links
-async function askForLinks(chatId, content, type) {
+function askForLinks(chatId, { content, caption }, type) {
   bot.sendMessage(chatId, 
     '*Send the link(s) in the format:*\n' +
-    '\\[Button text + link\]\n\n' +
-    'Example:\n\\[Translator + https://t.me/TransioBot\]\n\n' +
-    'To add several buttons in one row, write links next to the previous ones:\n' +
-    'Example:\n\\[Translator + https://t.me/TransioBot] [Support + https://example.com]\n\n' +
-    'To add several buttons in a new line, write links from a new line:\n' +
-    ' \\[Translator + https://t.me/TransioBot]\n \\[Second text + second link\]', { parse_mode: 'Markdown' });
-  
+    '\\[Button text + link\]\n' +
+    'Example: [Translator + https://t.me/TransioBot]', 
+    { parse_mode: 'Markdown' }
+  );
+
   bot.once('message', (msg) => {
     const links = msg.text.trim();
     try {
       const inlineKeyboard = formatLinksToInlineButtons(links);
-      const postId = savePost(type, { content, links });
+      const postId = savePost(type, { content, caption, links });
 
-      sendMediaWithButtons(chatId, type, content, inlineKeyboard);
+      sendMediaWithButtons(chatId, type, content, inlineKeyboard, caption);
       sendPostReadyMessage(chatId, postId);
-      delete activeFlows[chatId]; // Reset the flow after post is created
+      delete activeFlows[chatId];
     } catch (error) {
-      bot.sendMessage(chatId, 'Invalid format. Please try again following the provided format.');
+      bot.sendMessage(chatId, 'Invalid format. Please try again.');
     }
   });
 }
 
-// Function to format links into inline keyboard buttons
 function formatLinksToInlineButtons(links) {
   const rows = links.split('\n').map(row => row.trim());
-
-  const inlineKeyboard = rows.map(row => {
+  return rows.map(row => {
     const buttons = row.match(/\[([^\]]+?)\s?\+\s?([^\]]+?)\]/g).map(button => {
-      const match = button.replace(/^\[|\]$/g, '').split(' + ');
-      const text = match[0].trim();
-      const url = match[1].trim();
-
-      if (!text || !url || !url.startsWith('http')) {
-        throw new Error('Invalid button format');
-      }
-
-      return { text: text, url: url };
+      const [text, url] = button.replace(/^\[|\]$/g, '').split(' + ');
+      if (!url.startsWith('http')) throw new Error('Invalid URL format');
+      return { text: text.trim(), url: url.trim() };
     });
     return buttons;
   });
-  
-  return inlineKeyboard;
 }
 
-// Save the post data
 function savePost(type, data) {
-  const postId = Math.random().toString(36).substring(2, 15); // Generate a random ID
+  const postId = Math.random().toString(36).substring(2, 15);
   posts[postId] = { type, data };
   return postId;
 }
 
-// Send the media with inline buttons
-function sendMediaWithButtons(chatId, type, content, inlineKeyboard) {
+function sendMediaWithButtons(chatId, type, content, inlineKeyboard, caption = null) {
+  const options = { 
+    reply_markup: { inline_keyboard: inlineKeyboard },
+    caption: caption,
+    parse_mode: 'Markdown',
+  };
+
   if (type === 'text') {
-    bot.sendMessage(chatId, content, { reply_markup: { inline_keyboard: inlineKeyboard } });
+    bot.sendMessage(chatId, content, options);
   } else if (type === 'photo') {
-    bot.sendPhoto(chatId, content, { caption: 'Your photo post', reply_markup: { inline_keyboard: inlineKeyboard } });
+    bot.sendPhoto(chatId, content, options);
   } else if (type === 'gif') {
-    bot.sendAnimation(chatId, content, { caption: 'Your GIF post', reply_markup: { inline_keyboard: inlineKeyboard } });
+    bot.sendAnimation(chatId, content, options);
   } else if (type === 'video') {
-    bot.sendVideo(chatId, content, { caption: 'Your video post', reply_markup: { inline_keyboard: inlineKeyboard } });
+    bot.sendVideo(chatId, content, options);
   } else if (type === 'stickers') {
-    bot.sendSticker(chatId, content, { reply_markup: { inline_keyboard: inlineKeyboard } });
+    bot.sendSticker(chatId, content, options);
   }
 }
 
-// Send the "Your post is ready" message with token, share button, and favorite button
 function sendPostReadyMessage(chatId, postId) {
-  const tokenMessage = `Your post is ready! You can use it in any chat using the code below: \n\n\`${bot.username} ${postId}\``;
-
-  const shareButton = {
+  const message = `Your post is ready! Use the code below:\n\n\`/${postId}\``;
+  bot.sendMessage(chatId, message, {
     reply_markup: {
       inline_keyboard: [
         [
-          { text: 'Forward', switch_inline_query_current_chat: `${bot.username} ${postId}` },
+          { text: 'Forward', switch_inline_query_current_chat: `${postId}` },
           { text: 'Add to Favorites', callback_data: `favorite_${postId}` },
         ],
       ],
     },
-  };
-
-  bot.sendMessage(chatId, tokenMessage, shareButton);
+    parse_mode: 'Markdown',
+  });
 }
 
-// Function to reset to the main menu
 function returnToMainMenu(chatId) {
-  bot.sendMessage(chatId, 'Process canceled. Returning to the main menu...', mainMenu);
-  delete activeFlows[chatId]; // Reset active flow when returning to the main menu
+  delete activeFlows[chatId];
+  bot.sendMessage(chatId, 'Returning to main menu:', mainMenu);
 }
 
-// Handle Favorites menu
+function loadFavorites() {
+  try {
+    return JSON.parse(fs.readFileSync('postbot.json')).favorites || {};
+  } catch {
+    return {};
+  }
+}
+
+function saveFavorites() {
+  fs.writeFileSync('postbot.json', JSON.stringify({ favorites }, null, 2));
+}
+
 function handleFavoritesMenu(chatId) {
-  bot.sendMessage(chatId, 'Here are your favorite posts (feature coming soon).', cancelBackMenu);
+  const userFavorites = favorites[chatId] || {};
+  const favoriteList = Object.keys(userFavorites)
+    .map(id => `Post ID: ${id}\nContent: ${userFavorites[id].data.caption || 'No caption'}`)
+    .join('\n\n') || 'No favorites yet.';
+  bot.sendMessage(chatId, favoriteList, cancelBackMenu);
 }
 
-// Helper function to capitalize the first letter of a string
 function capitalizeFirstLetter(str) {
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
