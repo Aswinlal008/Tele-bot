@@ -1,5 +1,6 @@
 require('./bot');
 require('./bot2');
+require('./bot3');
 
-console.log('Both bots are running...');
+console.log('All bots are running...');
 
