@@ -584,6 +584,7 @@ registerCommand(/.*/, (msg) => {
   const username = msg.from.username || `${msg.from.first_name} ${msg.from.last_name || ""}`;
   logUserActivity(msg.from.id, username.trim(), `Used command: ${msg.text}`);
 });
+
 // Admin command to view user activity
 registerCommand(/\/useractivity/, (msg) => {
   restrictAdminCommand(msg, () => {
@@ -599,13 +600,16 @@ registerCommand(/\/useractivity/, (msg) => {
       .slice(-50) // Show only the last 50 logs for readability
       .map((log, index) => {
         const timeString = new Date(log.time).toLocaleString();
-        return `${index + 1}. [${timeString}] ${log.username} (${log.userId}) - ${log.action}`;
+        return `${index + 1}. [${timeString}] \`${log.username}\` (${log.userId}) - ${log.action}`;
       })
       .join("\n");
 
-    bot.sendMessage(chatId, `User Activity Logs (Last 50):\n\n${logMessage}`);
+    bot.sendMessage(chatId, `User Activity Logs (Last 50):\n\n${logMessage}`, {
+      parse_mode: "Markdown",
+    });
   });
 });
+
 
 // Handle /status command
 registerCommand(/\/status/, (msg) => {

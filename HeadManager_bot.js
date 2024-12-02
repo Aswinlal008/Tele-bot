@@ -14,7 +14,7 @@ let activeFlows = {};
 const mainMenu = {
   reply_markup: {
     keyboard: [
-      ['📃Create Post', '🌟Favorites'],
+      ['Create Post', 'Favorites'],
       ['Back'],
     ],
     resize_keyboard: true,
@@ -53,27 +53,35 @@ bot.onText(/\/help/, (msg) => {
 Welcome to the Bot! Here are the commands and features:
 
 1. */start*: Start the bot and see the main menu.
-2. *📃Create Post*: Create a new post by choosing a type (Text, Photo, GIF, Video, Stickers).
-3. *🌟Favorites*: View your favorite posts.
-4. */post {postId}*: View a specific post by its ID (e.g., /post abc123).
+2. *Create Post*: Create a new post by choosing a type (Text, Photo, GIF, Video, Stickers).
+3. *Favorites*: View your favorite posts.
+4. */post {postId}*: View or edit a specific post by its ID.
+    - *Example*: \`/post abc123\`
+    - Allows adding more inline links to the post.
 5. */cancel*: Cancel the current action and return to the main menu.
-`;
-  bot.sendMessage(chatId, helpMessage);
+6. */help*: Display this help message again.
+
+💡 *Tips:*
+- Use the format \`[Button text + link]\` to add inline buttons with links.
+- You can edit existing posts to add more links or review their details.
+  `;
+  bot.sendMessage(chatId, helpMessage, { parse_mode: 'Markdown' });
 });
+
 
 // Main menu handler
 bot.on('message', (msg) => {
   const chatId = msg.chat.id;
   const text = msg.text;
 
-  if (text === '📃Create Post') {
+  if (text === 'Create Post') {
     if (activeFlows[chatId]) {
       bot.sendMessage(chatId, 'You are already in the middle of creating a post.');
       return;
     }
     bot.sendMessage(chatId, 'Choose a type of post to create:', postTypeMenu);
     activeFlows[chatId] = 'postTypeSelection';
-  } else if (text === '🌟Favorites') {
+  } else if (text === 'Favorites') {
     handleFavoritesMenu(chatId);
   } else if (text === 'Back') {
     returnToMainMenu(chatId);
@@ -193,19 +201,99 @@ function sendMediaWithButtons(chatId, type, content, inlineKeyboard, caption = n
 }
 
 function sendPostReadyMessage(chatId, postId) {
-  const message = `Your post is ready! Use the code below:\n\n\`/${postId}\``;
-  bot.sendMessage(chatId, message, {
-    reply_markup: {
-      inline_keyboard: [
-        [
-          { text: 'Forward', switch_inline_query_current_chat: `${postId}` },
-          { text: 'Add to Favorites', callback_data: `favorite_${postId}` },
-        ],
+  const message = `🎉 *Your post is ready!* 🎉\n\n` +
+                  `Use the code below to share or reference it:\n\n` +
+                  `\`${postId}\`\n\n` +
+                  `Choose an option below:`;
+
+  const replyMarkup = {
+    inline_keyboard: [
+      [
+        { text: '🔄 Forward', switch_inline_query_current_chat: postId },
+        { text: '⭐ Add to Favorites', callback_data: `favorite_${postId}` },
       ],
-    },
+    ],
+  };
+
+  bot.sendMessage(chatId, message, {
+    reply_markup: replyMarkup,
     parse_mode: 'Markdown',
   });
 }
+
+// Command to handle /post <postId>
+bot.onText(/\/post (\w+)/, (msg, match) => {
+  const chatId = msg.chat.id;
+  const postId = match[1]; // Extract the postId from the command
+
+  if (!posts[postId]) {
+    bot.sendMessage(chatId, `❌ Post with ID \`${postId}\` not found.`, {
+      parse_mode: 'Markdown',
+    });
+    return;
+  }
+
+  const { type, data } = posts[postId];
+  const currentLinks = data.links || [];
+  const captionPreview = data.caption || 'No caption provided.';
+  const linksPreview = currentLinks
+    .map((row, idx) =>
+      row
+        .map((btn) => `[${btn.text} + ${btn.url}]`)
+        .join(', ')
+        .concat(` (${idx + 1})`)
+    )
+    .join('\n') || 'No inline links added yet.';
+
+  bot.sendMessage(
+    chatId,
+    `📝 *Editing Post ID*: \`${postId}\`\n\n` +
+      `📋 *Caption Preview:*\n${captionPreview}\n\n` +
+      `🔗 *Current Links:*\n${linksPreview}\n\n` +
+      `💡 Send new link(s) in the format:\n` +
+      '\\[Button text + link\\]\n' +
+      '*Example:*\n`[Website + https://example.com]`',
+    {
+      parse_mode: 'Markdown',
+    }
+  );
+
+  bot.once('message', (msg) => {
+    const links = msg.text.trim();
+
+    try {
+      const newLinks = formatLinksToInlineButtons(links);
+      posts[postId].data.links = [...currentLinks, ...newLinks]; // Append new links
+      savePostToFile(); // Save the updated posts object
+
+      sendMediaWithButtons(chatId, type, data.content, posts[postId].data.links, data.caption);
+
+      bot.sendMessage(chatId, `✅ Links updated successfully for Post ID: \`${postId}\``, {
+        parse_mode: 'Markdown',
+      });
+    } catch (error) {
+      bot.sendMessage(chatId, '❌ Invalid format. Please try again using the correct format.');
+    }
+  });
+});
+
+// Function to save posts to file (persistent storage)
+function savePostToFile() {
+  fs.writeFileSync('posts.json', JSON.stringify(posts, null, 2));
+}
+
+// Function to load posts from file (if the bot restarts)
+function loadPostsFromFile() {
+  try {
+    posts = JSON.parse(fs.readFileSync('posts.json'));
+  } catch (error) {
+    posts = {};
+  }
+}
+
+// Call loadPostsFromFile when the bot starts
+loadPostsFromFile();
+
 
 function returnToMainMenu(chatId) {
   delete activeFlows[chatId];
@@ -235,3 +323,24 @@ function handleFavoritesMenu(chatId) {
 function capitalizeFirstLetter(str) {
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
+
+bot.on('callback_query', (callbackQuery) => {
+  const chatId = callbackQuery.message.chat.id;
+  const data = callbackQuery.data;
+
+  if (data.startsWith('favorite_')) {
+    const postId = data.substring(9);
+    const post = posts[postId];
+
+    if (post) {
+      const userFavorites = favorites[chatId] || {};
+      userFavorites[postId] = post;
+      favorites[chatId] = userFavorites;
+      saveFavorites();
+
+      bot.answerCallbackQuery(callbackQuery.id, 'Post added to favorites!');
+    } else {
+      bot.answerCallbackQuery(callbackQuery.id, 'Post not found!');
+    }
+  }
+});
