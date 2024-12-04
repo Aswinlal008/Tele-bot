@@ -360,7 +360,7 @@ registerCommand(/\/addfiletobatch (\w{32})/, (msg, match) => {
   });
 });
 
-const PAGE_SIZE = 5; // Number of files per page
+const PAGE_SIZE = 10; // Number of files per page
 const MAX_MESSAGE_LENGTH = 4000; // Safeguard to avoid exceeding Telegram's message length limit
 
 // State to track page number input requests for each user (chatId)
@@ -372,14 +372,10 @@ function formatFileInfo(fileTokens, startIndex, endIndex) {
     const fileData = fileStore[token];
     const fileName = fileData.fileName || 'Unnamed';
     const accessLink = `https://t.me/${botUsername}?start=${token}`;
-    const fileType = fileData.mimeType || 'Unknown Type';
-    const fileSize = fileData.fileSize
-      ? (fileData.fileSize / 1024 / 1024).toFixed(2) + ' MB'  // Convert to MB
-      : 'Unknown';
     const timestamp = fileData.timestamp;
 
-    // File info formatted in Markdown
-    return `${startIndex + index + 1}. **File Name**: ${fileName}\n**Token**: \`${token}\`\n**Link**: [Access File](${accessLink})\n**Type**: ${fileType}\n**Size**: ${fileSize}\n**Edit Command**: [Edit File](tg://msg?text=/editfilename%20${token})\n**Delete Command**: [Delete File](tg://msg?text=/deletefile%20${token})\n**Time**: ${timestamp}`;
+    // File info formatted in Markdown without Type and Size
+    return `${startIndex + index + 1}. **File Name**: ${fileName}\n**Token**: \`${token}\`\n**Link**: [Access File](${accessLink})\n**Edit Command**: [Edit File](tg://msg?text=/editfilename%20${token})\n**Delete Command**: [Delete File](tg://msg?text=/deletefile%20${token})\n**Time**: ${timestamp}`;
   }).join('\n\n');
 }
 

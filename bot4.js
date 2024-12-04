@@ -176,7 +176,3 @@ function formatLinkToButton(linkInput) {
   if (!match) throw new Error('Invalid format');
   return { text: match[1], url: match[2] };
 }
-
-// Start the bot
-loadPostsFromFile();
-console.log('Bot is running...');
