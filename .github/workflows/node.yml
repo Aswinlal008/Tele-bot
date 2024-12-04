@@ -23,10 +23,13 @@ jobs:
         run: npm install
 
       - name: Run Telegram bots
+        env:
+          TELEGRAM_BOT_TOKENS: 7335742201:AAFoImQFzV8wY1FSO-R7kU7ER3exaizELXs,7349582365:AAGTpRVnxxwpzecfFg87O3YKFrJu_sYZA-o,6687867709:AAETARF0SueDToxrizRDGBknAa3hujofNck,1309035023:AAEtS50HYL7pv64pWhAN5nZdpkE5qlkuioI
+          TMDB_API_KEY: a43e040291da814d28bfd6d878bc8831
         run: |
           # Split tokens into an array and run each bot
-          echo "${{ secrets.TELEGRAM_BOT_TOKENS }}" | tr "," "\n" | while read TOKEN
+          echo $TELEGRAM_BOT_TOKENS | tr "," "\n" | while read TOKEN
           do
-            TELEGRAM_BOT_TOKEN=$TOKEN TMDB_API_KEY=${{ secrets.TMDB_API_KEY }} node main.js &
+            TELEGRAM_BOT_TOKEN=$TOKEN TMDB_API_KEY=$TMDB_API_KEY node main.js &
           done
           wait
