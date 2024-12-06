@@ -143,7 +143,7 @@ function askForLinks(chatId, { content, caption }, type) {
   bot.sendMessage(chatId, 
     '*Send the link(s) in the format:*\n' +
     '\\[Button text + link\]\n' +
-    'Example: [Translator + https://t.me/TransioBot]', 
+    'Example: \\[Translator + https://t.me/TransioBot\]\n', 
     { parse_mode: 'Markdown' }
   );
 

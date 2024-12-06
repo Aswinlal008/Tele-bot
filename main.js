@@ -1,6 +1,6 @@
-require('./ISEECloud_bot');
-require('./Cloudmaker2_bot');
-require('./HeadManager_bot');
+require('./bot');
+require('./bot2');
+require('./bot3');
 require('./bot4');
 
 console.log('All bots are running...');

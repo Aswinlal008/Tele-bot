@@ -90,24 +90,24 @@ registerCommand(/\/start(.*)/, (msg, match) => {
     
     // Creating an inline keyboard with contact and join group buttons
     const joinGroupButton = {
-      text: 'Join Our Channel/Group',  // Button text
+      text: 'Join Our Channel/Group',
       url: 'https://t.me/Discussionclouds' // Replace with your channel or group link
     };
 
     const contactButton = {
-      text: 'Contact Support',  // Button text
-      url: 'https://t.me/aswinlalus' // Link to BotFather (replace with your contact link or support link)
+      text: 'Contact Support',
+      url: 'https://t.me/aswinlalus' // Replace with your contact link or support link
     };
     
     const inlineKeyboard = {
       inline_keyboard: [
-        [joinGroupButton],  // Adding the join group button to the first row
-        [contactButton]  // Adding the contact button to the second row
+        [joinGroupButton], 
+        [contactButton]
       ]
     };
 
     bot.sendMessage(chatId, welcomeMessage, {
-      reply_markup: inlineKeyboard  // Attach the inline keyboard to the message
+      reply_markup: inlineKeyboard
     });
     return;
   }
@@ -115,14 +115,36 @@ registerCommand(/\/start(.*)/, (msg, match) => {
   // If a token is provided
   if (token && fileStore[token]) {
     const fileData = fileStore[token];
-    if (fileData.files) {
-      const filePromises = fileData.files.map((fileData) => bot.sendDocument(chatId, fileData.fileId));
-      Promise.all(filePromises)
-        .then(() => bot.sendMessage(chatId, 'All files in the batch have been sent!'))
-        .catch((error) => bot.sendMessage(chatId, 'There was an issue retrieving the files.'));
-    } else {
+
+    if (fileData.files && fileData.files.length > 0) {
+      // Sort the files (optional: already stored sequentially in the array)
+      const sortedFiles = fileData.files;
+
+      // Send files sequentially in order
+      (async () => {
+        for (const file of sortedFiles) {
+          try {
+            await bot.sendDocument(chatId, file.fileId, {
+              caption: file.fileName
+            });
+          } catch (error) {
+            console.error(`Error sending file ${file.fileId}:`, error);
+            await bot.sendMessage(chatId, `Failed to send file: ${file.fileName}`);
+          }
+        }
+      })()
+      .then(() => bot.sendMessage(chatId, 'All files have been sent in order!'))
+      .catch(() => bot.sendMessage(chatId, 'Some files couldn\'t be sent.'));
+    } else if (fileData.fileId) {
+      // If a single file
       bot.sendDocument(chatId, fileData.fileId)
-        .then(() => bot.sendMessage(chatId, 'Here is your requested file!'));
+        .then(() => bot.sendMessage(chatId, 'Here is your requested file!'))
+        .catch((error) => {
+          console.error('Error sending file:', error);
+          bot.sendMessage(chatId, 'Failed to send the file.');
+        });
+    } else {
+      bot.sendMessage(chatId, 'No files found for the provided token.');
     }
   } else {
     bot.sendMessage(chatId, 'Invalid token! No file or batch found.');
@@ -141,18 +163,18 @@ registerCommand(/\/helpadmin/, (msg) => {
     const chatId = msg.chat.id;
     const adminHelpMessage = `Admin Commands:
   \n/sendfile <file_name> - Start a batch and send files to it
-  \n/addfiletobatch <batch_token> - Add files to an existing batch
-  \n/removefilefrombatch <batch_token> <file_index> - Remove a file from a batch
-  \n/listfiles - List all stored files or batches with details (File name, token, access link, type, size, edit and delete commands, time) with pagination
-  \n/editfilename <token> <new_name> - Edit the name of a stored file
-  \n/deletefile <token> - Delete a file or batch
-  \n/bulkremove <file_numbers> - Remove multiple files by their order numbers (e.g., /bulkremove 1,3,5)
-  \n/status - Get bot status
-  \n/clearlogs - Clear action logs
-  \n/exportfiles - Generate and download a file containing the details of all stored files or batches, including names, tokens, access links, types, sizes, and timestamps.
-  \n/broadcast - Send a message to all users
-  \n/useractivity - View a list of user activities (last 50 actions)`;
-  
+\n/addfiletobatch <batch_token> - Add files to an existing batch
+\n/removefilefrombatch <batch_token> <file_index> - Remove a file from a batch
+\n/listfiles - List all stored files or batches with details (File name, token, access link, type, size, edit and delete commands, time) with pagination
+\n/files - List all stored files with their names and access links in a simple format ("1. File name - Access Link")
+\n/editfilename <token> <new_name> - Edit the name of a stored file
+\n/deletefile <token> - Delete a file or batch
+\n/bulkremove <file_numbers> - Remove multiple files by their order numbers (e.g., /bulkremove 1,3,5)
+\n/status - Get bot status
+\n/clearlogs - Clear action logs
+\n/exportfiles - Generate and download a file containing the details of all stored files or batches, including names, tokens, access links, types, sizes, and timestamps.
+\n/broadcast - Send a message to all users
+\n/useractivity - View a list of user activities (last 50 actions)`;
     bot.sendMessage(chatId, adminHelpMessage);
   });
 });
@@ -513,6 +535,36 @@ registerCommand(/\/exportfiles/, (msg) => {
       });
   });
 });
+
+// Handle /files command
+registerCommand(/\/files/, (msg) => {
+  restrictAdminCommand(msg, () => {
+    const chatId = msg.chat.id;
+    const fileTokens = Object.keys(fileStore);
+    const totalFiles = fileTokens.length;
+
+    if (totalFiles === 0) {
+      bot.sendMessage(chatId, 'No files or batches found.');
+      return;
+    }
+
+    // Create a list of files in the "1. **File name** - [Access Link](file_access_link)" format
+    let fileList = '';
+    fileTokens.forEach((token, index) => {
+      const fileData = fileStore[token];
+      const fileName = fileData.fileName || 'Unnamed';
+      const accessLink = `https://t.me/${botUsername}?start=${token}`;
+      
+      // Add each file info in the required format with bold file name and clickable access link
+      fileList += `${index + 1}. *${fileName}* - [Access Link](${accessLink})\n`;
+    });
+
+    // Send the list of files to the admin with Markdown formatting enabled
+    bot.sendMessage(chatId, `Stored files:\n\n${fileList}`, { parse_mode: 'Markdown' });
+  });
+});
+
+
 // Store user chat IDs (for example, dynamically collected when users interact with the bot)
 let registeredUsers = []; // Replace with your actual user database or array
 
@@ -531,12 +583,16 @@ registerCommand(/\/broadcast/, (msg) => {
   restrictAdminCommand(msg, () => {
     const chatId = msg.chat.id;
 
+    // Check if the admin replied to a message (sticker, media, or text)
     if (!msg.reply_to_message) {
       bot.sendMessage(chatId, "Please reply to the message you want to broadcast.");
       return;
     }
 
     const messageToBroadcast = msg.reply_to_message;
+
+    // Send a confirmation message that the broadcast is starting
+    bot.sendMessage(chatId, "Broadcast is starting...");
 
     // Send the message to all registered users
     let successCount = 0;
@@ -557,6 +613,8 @@ registerCommand(/\/broadcast/, (msg) => {
     }, 3000); // Adjust the delay as needed for larger broadcasts
   });
 });
+
+
 // Store user activity logs
 let userActivityLogs = []; // Replace this with a persistent database if necessary
 
