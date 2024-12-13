@@ -163,18 +163,18 @@ registerCommand(/\/helpadmin/, (msg) => {
     const chatId = msg.chat.id;
     const adminHelpMessage = `Admin Commands:
   \n/sendfile <file_name> - Start a batch and send files to it
-\n/addfiletobatch <batch_token> - Add files to an existing batch
-\n/removefilefrombatch <batch_token> <file_index> - Remove a file from a batch
-\n/listfiles - List all stored files or batches with details (File name, token, access link, type, size, edit and delete commands, time) with pagination
-\n/files - List all stored files with their names and access links in a simple format ("1. File name - Access Link")
-\n/editfilename <token> <new_name> - Edit the name of a stored file
-\n/deletefile <token> - Delete a file or batch
-\n/bulkremove <file_numbers> - Remove multiple files by their order numbers (e.g., /bulkremove 1,3,5)
-\n/status - Get bot status
-\n/clearlogs - Clear action logs
-\n/exportfiles - Generate and download a file containing the details of all stored files or batches, including names, tokens, access links, types, sizes, and timestamps.
-\n/broadcast - Send a message to all users
-\n/useractivity - View a list of user activities (last 50 actions)`;
+  \n/addfiletobatch <batch_token> - Add files to an existing batch
+  \n/removefilefrombatch <batch_token> <file_index> - Remove a file from a batch
+  \n/listfiles - List all stored files or batches with details (File name, token, access link, type, size, edit and delete commands, time) with pagination
+  \n/files - List all stored files with their names and access links in a simple format ("1. File name - Access Link")
+  \n/editfilename <token> <new_name> - Edit the name of a stored file
+  \n/deletefile <token> - Delete a file or batch
+  \n/bulkremove <file_numbers> - Remove multiple files by their order numbers (e.g., /bulkremove 1,3,5)
+  \n/status - Get bot status
+  \n/clearlogs - Clear action logs
+  \n/exportfiles - Generate and download a file containing the details of all stored files or batches, including names, tokens, access links, types, sizes, and timestamps.
+  \n/broadcast - Send a message to all users
+  \n/useractivity - View a list of user activities (last 50 actions)`;
     bot.sendMessage(chatId, adminHelpMessage);
   });
 });
@@ -591,26 +591,54 @@ registerCommand(/\/broadcast/, (msg) => {
 
     const messageToBroadcast = msg.reply_to_message;
 
-    // Send a confirmation message that the broadcast is starting
-    bot.sendMessage(chatId, "Broadcast is starting...");
+    // Preview the message for the admin
+    bot.copyMessage(chatId, chatId, messageToBroadcast.message_id)
+      .then(() => {
+        // Send confirmation message after preview
+        bot.sendMessage(
+          chatId,
+          "Here is the message to be broadcasted. Reply with 'Publish' to confirm or 'Cancel' to abort."
+        );
+      })
+      .catch((err) => {
+        console.error("Error copying message:", err);
+        bot.sendMessage(chatId, "Failed to preview the broadcast message. Please try again.");
+        return;
+      });
 
-    // Send the message to all registered users
-    let successCount = 0;
-    let failureCount = 0;
+    // Listen for confirmation or cancellation
+    const confirmListener = bot.on('message', (response) => {
+      if (response.chat.id === chatId) {
+        const confirmation = response.text.toLowerCase();
+        if (confirmation === 'publish') {
+          bot.removeListener('message', confirmListener);
 
-    registeredUsers.forEach((userId) => {
-      bot.copyMessage(userId, chatId, messageToBroadcast.message_id)
-        .then(() => successCount++)
-        .catch(() => failureCount++);
+          // Start broadcasting
+          bot.sendMessage(chatId, "Broadcast is starting...");
+          let successCount = 0;
+          let failureCount = 0;
+
+          registeredUsers.forEach((userId) => {
+            bot.copyMessage(userId, chatId, messageToBroadcast.message_id)
+              .then(() => successCount++)
+              .catch(() => failureCount++);
+          });
+
+          // Inform the admin of the broadcast status
+          setTimeout(() => {
+            bot.sendMessage(
+              chatId,
+              `Broadcast complete:\n✅ Sent to: ${successCount} users\n❌ Failed to send to: ${failureCount} users`
+            );
+          }, 3000);
+        } else if (confirmation === 'cancel') {
+          bot.removeListener('message', confirmListener);
+          bot.sendMessage(chatId, "Broadcast cancelled.");
+        } else {
+          bot.sendMessage(chatId, "Unrecognized command. Reply with 'Publish' to confirm or 'Cancel' to abort.");
+        }
+      }
     });
-
-    // Inform the admin of the broadcast status
-    setTimeout(() => {
-      bot.sendMessage(
-        chatId,
-        `Broadcast complete:\n✅ Sent to: ${successCount} users\n❌ Failed to send to: ${failureCount} users`
-      );
-    }, 3000); // Adjust the delay as needed for larger broadcasts
   });
 });
 
