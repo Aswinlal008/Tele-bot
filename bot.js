@@ -4,9 +4,12 @@ const crypto = require('crypto');
 const fs = require('fs');
 const moment = require('moment-timezone');
 
+
+const logFilePath = "./userActivityLogs.json";
 // File paths
 const storageFilePath = './storage.json';
-const logFilePath = './bot_actions.log';
+const botActionsLogFilePath = './bot_actions.log'; // Renamed
+const userActivityLogFilePath = './userActivityLogs.json'; // Renamed
 
 // Read storage file
 function readStorage() {
@@ -34,7 +37,7 @@ function writeStorage(data) {
 // Log actions to a file
 function logAction(action) {
   const logMessage = `${getCurrentTime()} - ${action}\n`;
-  fs.appendFileSync(logFilePath, logMessage);
+  fs.appendFileSync(botActionsLogFilePath, logMessage);
 }
 
 // Current time in GMT+5:30
@@ -667,22 +670,55 @@ registerCommand(/.*/, (msg) => {
   logUserActivity(msg.from.id, username.trim(), `Used command: ${msg.text}`);
 });
 
+// Function to log user activity
+function logUserActivity(userId, username, action, time = new Date()) {
+  const logEntry = {
+    userId,
+    username: username || "Unknown",
+    action,
+    time,
+  };
+
+  // Append log entry to file
+  let logs = [];
+  if (fs.existsSync(userActivityLogFilePath)) {
+    const fileData = fs.readFileSync(userActivityLogFilePath, "utf8");
+    logs = JSON.parse(fileData || "[]");
+  }
+  logs.push(logEntry);
+
+  // Write updated logs back to the file
+  fs.writeFileSync(userActivityLogFilePath, JSON.stringify(logs, null, 2));
+}
+
 // Admin command to view user activity
 registerCommand(/\/useractivity/, (msg) => {
   restrictAdminCommand(msg, () => {
     const chatId = msg.chat.id;
 
-    if (userActivityLogs.length === 0) {
+    // Check if the log file exists
+    if (!fs.existsSync(userActivityLogFilePath)) {
+      bot.sendMessage(chatId, "No user activity logs available.");
+      return;
+    }
+
+    // Read logs from the file
+    const logs = JSON.parse(fs.readFileSync(userActivityLogFilePath, "utf8") || "[]");
+
+    if (logs.length === 0) {
       bot.sendMessage(chatId, "No user activity logs available.");
       return;
     }
 
     // Format logs into a message
-    const logMessage = userActivityLogs
+    const logMessage = logs
       .slice(-50) // Show only the last 50 logs for readability
       .map((log, index) => {
         const timeString = new Date(log.time).toLocaleString();
-        return `${index + 1}. [${timeString}] \`${log.username}\` (${log.userId}) - ${log.action}`;
+        const username = log.username
+          ? `[@${log.username}](tg://user?id=${log.userId})`
+          : `\`${log.userId}\``;
+        return `${index + 1}. [${timeString}] ${username} - ${log.action}`;
       })
       .join("\n");
 
@@ -691,6 +727,13 @@ registerCommand(/\/useractivity/, (msg) => {
     });
   });
 });
+
+// Example: Call this function for every user interaction
+registerCommand(/.*/, (msg) => {
+  const username = msg.from.username || `${msg.from.first_name} ${msg.from.last_name || ""}`.trim();
+  logUserActivity(msg.from.id, username, `Used command: ${msg.text}`);
+});
+
 
 
 // Handle /status command
