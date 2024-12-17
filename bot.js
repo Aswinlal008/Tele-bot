@@ -1,4 +1,4 @@
-// Import required packages
+// Import required packages ISEECloud_bot
 const TelegramBot = require('node-telegram-bot-api');
 const crypto = require('crypto');
 const fs = require('fs');
@@ -46,7 +46,7 @@ function getCurrentTime() {
 }
 
 // Telegram Bot credentials
-const token = '7335742201:AAFoImQFzV8wY1FSO-R7kU7ER3exaizELXs'; // Replace with your bot token
+const token = '7335742201:AAFcnQJMyn90Q1jDZyHbyVYr2mKy97QTZOE'; // Replace with your bot token
 const botUsername = 'ISEECloud_bot'; // Replace with your bot's username
 const adminUserId = 803543058; // Replace with admin's user_id
 
@@ -645,52 +645,6 @@ registerCommand(/\/broadcast/, (msg) => {
   });
 });
 
-
-// Store user activity logs
-let userActivityLogs = []; // Replace this with a persistent database if necessary
-
-// Function to log user activity
-function logUserActivity(userId, username, action, time = new Date()) {
-  userActivityLogs.push({
-    userId,
-    username: username || "Unknown",
-    action,
-    time,
-  });
-
-  // Limit log size (optional)
-  if (userActivityLogs.length > 1000) {
-    userActivityLogs.shift(); // Remove oldest log if the limit is reached
-  }
-}
-
-// Example: Call this function in every command or user interaction
-registerCommand(/.*/, (msg) => {
-  const username = msg.from.username || `${msg.from.first_name} ${msg.from.last_name || ""}`;
-  logUserActivity(msg.from.id, username.trim(), `Used command: ${msg.text}`);
-});
-
-// Function to log user activity
-function logUserActivity(userId, username, action, time = new Date()) {
-  const logEntry = {
-    userId,
-    username: username || "Unknown",
-    action,
-    time,
-  };
-
-  // Append log entry to file
-  let logs = [];
-  if (fs.existsSync(userActivityLogFilePath)) {
-    const fileData = fs.readFileSync(userActivityLogFilePath, "utf8");
-    logs = JSON.parse(fileData || "[]");
-  }
-  logs.push(logEntry);
-
-  // Write updated logs back to the file
-  fs.writeFileSync(userActivityLogFilePath, JSON.stringify(logs, null, 2));
-}
-
 // Admin command to view user activity
 registerCommand(/\/useractivity/, (msg) => {
   restrictAdminCommand(msg, () => {
@@ -710,9 +664,11 @@ registerCommand(/\/useractivity/, (msg) => {
       return;
     }
 
-    // Format logs into a message
-    const logMessage = logs
-      .slice(-50) // Show only the last 50 logs for readability
+    // Get the last 50 log entries
+    const recentLogs = logs.slice(-40); // Only the last 40 logs
+
+    // Format logs into a readable message
+    const logMessage = recentLogs
       .map((log, index) => {
         const timeString = new Date(log.time).toLocaleString();
         const username = log.username
@@ -722,19 +678,17 @@ registerCommand(/\/useractivity/, (msg) => {
       })
       .join("\n");
 
-    bot.sendMessage(chatId, `User Activity Logs (Last 50):\n\n${logMessage}`, {
+    // Ensure the final message fits within Telegram's limit
+    const trimmedMessage = logMessage.length > 3000
+      ? logMessage.substring(0, 3000) + "\n...\nLogs trimmed for length."
+      : logMessage;
+
+    // Send the logs as a single message
+    bot.sendMessage(chatId, `User Activity Logs (Last 50):\n\n${trimmedMessage}`, {
       parse_mode: "Markdown",
     });
   });
 });
-
-// Example: Call this function for every user interaction
-registerCommand(/.*/, (msg) => {
-  const username = msg.from.username || `${msg.from.first_name} ${msg.from.last_name || ""}`.trim();
-  logUserActivity(msg.from.id, username, `Used command: ${msg.text}`);
-});
-
-
 
 // Handle /status command
 registerCommand(/\/status/, (msg) => {

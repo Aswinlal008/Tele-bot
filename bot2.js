@@ -1,265 +1,206 @@
+// Import required packages Cloudmaker2_bot
 const TelegramBot = require('node-telegram-bot-api');
-const axios = require('axios');
+const fs = require('fs');
 
-// Replace with your bot's token from BotFather
+// Replace with your bot's API token
 const token = '7349582365:AAGTpRVnxxwpzecfFg87O3YKFrJu_sYZA-o';
+
+// Create a bot instance
 const bot = new TelegramBot(token, { polling: true });
 
-// Define conversation states
-const FILENAME = 'FILENAME';
-const FILECONTENT = 'FILECONTENT';
-const WAIT_FOR_MOVIE_NAME = 'WAIT_FOR_MOVIE_NAME';
+// Store temporary data for user interactions
+const userSessions = {};
 
-let userData = {};
-let userFavorites = {}; // Store user favorites by chatId
-
-// TMDb API key and URL for movie search
-const TMDB_API_KEY = 'a43e040291da814d28bfd6d878bc8831'; // Replace with your actual TMDb API key
-const TMDB_API_URL = 'https://api.themoviedb.org/3/search/movie'; // API endpoint for searching movies
-
-// Start Command: Welcome message and instructions
-bot.onText(/\/start/, (msg) => {
-  const chatId = msg.chat.id;
-  bot.sendMessage(chatId, 'Welcome! I can help you with:\n' +
-    '/searchmovie <movie name> - Search for a movie\n' +
-    '/newfile - Create a new text file\n' +
-    '@YourBotUsername inline queries - Try inline posts!');
-});
-
-// Command: /help
-bot.onText(/\/help/, (msg) => {
-  const chatId = msg.chat.id;
-  bot.sendMessage(chatId, 'Here are the available commands you can use:\n\n' +
-    '/start - Get a welcome message and an overview of the available commands.\n' +
-    '/searchmovie <movie name> - Search for a movie by name and get details like title, rating, and genre.\n' +
-    '/newfile - Start the process of creating a new text file. You can set the file name and content.\n' +
-    '/help - Show this help message with information on how to use the bot.\n' +
-    'Simply type the command and follow the instructions!');
-});
-
-// Command: /newfile
-bot.onText(/\/newfile/, (msg) => {
-  const chatId = msg.chat.id;
-  bot.sendMessage(chatId, 'Let\'s start over! Tell me the name for the new file.')
-    .then(() => {
-      userData[chatId] = { state: FILENAME }; // Reset the conversation state
-    });
-});
-
-// Handle file name input and content
-bot.on('message', (msg) => {
-  const chatId = msg.chat.id;
-  const userState = userData[chatId]?.state;
-
-  if (userState === FILENAME) {
-    const fileName = msg.text;
-    bot.sendMessage(chatId, `File name set to: ${fileName}. Now, please send me the content for the file.`)
-      .then(() => {
-        userData[chatId] = { state: FILECONTENT, fileName };
-      });
-  } else if (userState === FILECONTENT) {
-    const fileContent = msg.text;
-    const fileName = userData[chatId]?.fileName;
-
-    const buffer = Buffer.from(fileContent, 'utf-8');
-
-    bot.sendDocument(chatId, buffer, {}, { filename: `${fileName}.txt`, contentType: 'text/plain' })
-      .then(() => {
-        bot.sendMessage(chatId, `File "${fileName}.txt" has been created successfully!`);
-      })
-      .catch((error) => {
-        bot.sendMessage(chatId, `Error sending the file: ${error.message}`);
-      });
-
-    userData[chatId] = { state: null };
-  } else if (userState === WAIT_FOR_MOVIE_NAME) {
-    const movieName = msg.text.trim();
-
-    axios.get(TMDB_API_URL, {
-      params: {
-        api_key: TMDB_API_KEY,
-        query: movieName,
-        language: 'en-US',
-        page: 1,
-      },
-    })
-      .then((response) => {
-        const movie = response.data.results[0];
-        if (movie) {
-          const movieDetails = `Title: ${movie.title} (${movie.release_date.split('-')[0]})\n` +
-            `Rating ⭐️: ${movie.vote_average} / 10\n` +
-            `Genres: ${movie.genre_ids.map(id => getGenreName(id)).join(', ') || 'Unknown'}\n` +
-            `Language: ${movie.original_language.toUpperCase()}`;
-
-          bot.sendMessage(chatId, movieDetails);
-          bot.sendPhoto(chatId, `https://image.tmdb.org/t/p/w500${movie.poster_path}`);
-        } else {
-          bot.sendMessage(chatId, `Sorry, I couldn't find details for "${movieName}".`);
-        }
-      })
-      .catch((error) => {
-        bot.sendMessage(chatId, `Error searching for the movie: ${error.message}`);
-      });
-
-    delete userData[chatId];
-  }
-});
-
-// Command: /searchmovie
-bot.onText(/\/searchmovie (.+)/, (msg, match) => {
-  const chatId = msg.chat.id;
-  const movieName = match[1];
-
-  userData[chatId] = { state: WAIT_FOR_MOVIE_NAME };
-  bot.sendMessage(chatId, `Searching for "${movieName}"...`);
-});
-
-// Fetch user favorites from memory
-function getUserFavorites(chatId) {
-  return userFavorites[chatId] || [];
+// Store posts in a JSON file
+const postsFile = 'posts.json';
+let storedPosts = {};
+if (fs.existsSync(postsFile)) {
+  storedPosts = JSON.parse(fs.readFileSync(postsFile));
 }
 
-// Command: @Cloudmaker2_bot (inline query)
-bot.on('inline_query', async (query) => {
-  const inlineQueryId = query.id;
-  const chatId = query.from.id;
+// Save posts to the JSON file
+const savePostsToFile = () => {
+  fs.writeFileSync(postsFile, JSON.stringify(storedPosts, null, 2));
+};
 
-  // Fetch user's favorite items
-  const userFavs = getUserFavorites(chatId);
-
-  // Prepare "favorites" and "create post" buttons
-  const results = [
-    {
-      type: 'article',
-      id: 'favorites',
-      title: '📂 Favorites',
-      description: 'View and use your saved favorite posts',
-      input_message_content: {
-        message_text: 'Select one of your favorite posts to use.',
-      },
-      reply_markup: {
-        inline_keyboard: userFavs.map((favorite, index) => [
-          [{ text: favorite.title || `Favorite ${index + 1}`, switch_inline_query_current_chat: favorite.content }],
-        ]),
-      },
-    },
-    {
-      type: 'article',
-      id: 'create-post',
-      title: '✏️ Create Post',
-      description: 'Start creating a new inline post',
-      input_message_content: {
-        message_text: 'Click below to start creating a new post.',
-      },
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: 'Start Creating', callback_data: 'create-post' }],
-        ],
-      },
-    },
-  ];
-
-  bot.answerInlineQuery(inlineQueryId, results);
+// Handle /start command
+bot.onText(/\/start/, (msg) => {
+  const chatId = msg.chat.id;
+  bot.sendMessage(chatId, 'Welcome! Use /newpost to add inline buttons to your message.\nFor help, use /help.');
 });
 
-// Store user data for creating a post
-const userPostCreationState = {};
+// Handle /newpost command
+bot.onText(/\/newpost/, (msg) => {
+  const chatId = msg.chat.id;
 
-// Handle button clicks for creating a post
-bot.on('callback_query', async (callbackQuery) => {
-  const chatId = callbackQuery.message.chat.id;
-  const messageId = callbackQuery.message.message_id;
+  // Initialize session for the user
+  userSessions[chatId] = {
+    step: 'await_post',
+    buttons: [
+      { text: '🎬𝗗𝗢𝗪𝗡𝗟𝗢𝗔𝗗', url: '' },
+      { text: '🎥𝐃𝗢𝗪𝗡𝗟𝗢𝗔𝗗', url: '' },
+    ],
+    post: null,
+  };
 
-  if (callbackQuery.data === 'create-post') {
-    userPostCreationState[chatId] = { stage: 'type-selection' };
+  bot.sendMessage(chatId, 'Please send the post or newpost a message (media with captions or plain text) to which you want to attach inline buttons.');
+});
 
-    // Ask the user what type of post they want to create
-    await bot.sendMessage(chatId, 'What type of content would you like to create?', {
+// Handle /help command
+bot.onText(/\/help/, (msg) => {
+  const chatId = msg.chat.id;
+  const helpMessage = `
+Here is how to use the bot:
+
+1. **/newpost** - Start creating a new post. You can add buttons with links to your post.
+2. **Send your post** - It can be a text or media message (with caption).
+3. **Add links** - After sending your post, the bot will ask you to input the links for the buttons.
+4. **Confirm Post** - After adding the links, the bot will display the post with the buttons for confirmation.
+5. **/view [Post ID]** - View a saved post by ID.
+6. **/postids** - View the list of post IDs.
+
+For further assistance, feel free to reach out!`;
+
+  bot.sendMessage(chatId, helpMessage);
+});
+
+// Handle /postids command to list all post IDs
+bot.onText(/\/postids/, (msg) => {
+  const chatId = msg.chat.id;
+
+  // Check if there are any stored posts
+  if (Object.keys(storedPosts).length === 0) {
+    bot.sendMessage(chatId, 'No posts have been created yet.');
+    return;
+  }
+
+  // List all post IDs in order and number them
+  const postIds = Object.keys(storedPosts).sort((a, b) => parseInt(a.split('_')[1]) - parseInt(b.split('_')[1]));
+
+// Prepare the list of post IDs with /view prefix
+const postIdsMessage = `Here are the post IDs in order:\n\n${postIds.map((postId, index) => `/view <code>${postId}</code> - Post #<code>${index + 1}</code>`).join('\n')}`;
+
+bot.sendMessage(chatId, postIdsMessage, { parse_mode: 'HTML' });
+});
+
+
+// Handle received messages
+bot.on('message', (msg) => {
+  const chatId = msg.chat.id;
+
+  if (!userSessions[chatId]) return;
+
+  const session = userSessions[chatId];
+
+  if (session.step === 'await_post') {
+    session.post = msg;
+    session.step = 'choose_buttons';
+
+    bot.sendMessage(chatId, 'Choose an option to attach links:', {
       reply_markup: {
         inline_keyboard: [
-          [{ text: 'Text', callback_data: 'create-text' }],
-          [{ text: 'Photo', callback_data: 'create-photo' }],
-          [{ text: 'GIF', callback_data: 'create-gif' }],
-          [{ text: 'Video', callback_data: 'create-video' }],
-          [{ text: 'Sticker', callback_data: 'create-sticker' }],
+          [{ text: '🎬𝗗𝗢𝗪𝗡𝗟𝗢𝗔𝗗', callback_data: 'button_1' }],
+          [{ text: '🎥𝐃𝗢𝗪𝗡𝗟𝗢𝗔𝗗', callback_data: 'button_2' }],
         ],
       },
     });
+  } else if (session.step === 'input_link_1' || session.step === 'input_link_2') {
+    const buttonIndex = session.step === 'input_link_1' ? 0 : 1;
+    session.buttons[buttonIndex].url = msg.text;
+
+    // Save the post
+    const postId = `post_${Date.now()}`;
+    storedPosts[postId] = {
+      post: session.post,
+      buttons: session.buttons,
+    };
+
+    savePostsToFile();
+
+    // Send confirmation with the post ID
+    bot.sendMessage(chatId, `Link added successfully!\n\nPost ID: \`${postId}\`\nThis ID has been saved for your reference.`);
+
+    session.step = 'confirm_post';
+
+    // Show the post with buttons for confirmation
+    const validButtons = session.buttons.filter(button => button.url);
+
+    const postOptions = {
+      reply_markup: {
+        inline_keyboard: [
+          validButtons.map(button => ({ text: button.text, url: button.url })),
+        ],
+      },
+      parse_mode: session.post.caption_entities ? 'HTML' : undefined,
+    };
+
+    const accessLink = `https://t.me/${bot.username}?start=${session.post.text ? session.post.text.split(' ')[0] : 'unknown'}`;
+
+    // Send message with bot username and post ID in monospace format
+    bot.sendMessage(chatId, `Here is the post you created:\n\n${session.post.text}\n\nPost ID: \`${postId}\`\nAccess Link: [Click here](${accessLink})`);
+
+    delete userSessions[chatId];
+  }
+});
+
+
+// Handle button clicks
+bot.on('callback_query', (callbackQuery) => {
+  const chatId = callbackQuery.message.chat.id;
+  const data = callbackQuery.data;
+
+  if (!userSessions[chatId]) {
+    bot.answerCallbackQuery(callbackQuery.id, { text: 'Session expired. Please use /newpost again.' });
+    return;
   }
 
-  // Handle content type selection
-  const userState = userPostCreationState[chatId];
-  if (userState?.stage === 'type-selection') {
-    const contentType = callbackQuery.data.split('-')[1]; // Extract content type (e.g., 'text', 'photo')
+  const session = userSessions[chatId];
 
-    userPostCreationState[chatId] = { stage: 'waiting-for-content', contentType };
-    await bot.sendMessage(chatId, `Please send the ${contentType} content for your post.`);
+  if (data === 'button_1') {
+    session.step = 'input_link_1';
+    bot.answerCallbackQuery(callbackQuery.id);
+    bot.sendMessage(chatId, 'Please send the link for 🎬𝗗𝗢𝗪𝗡𝗟𝗢𝗔𝗗.');
+  } else if (data === 'button_2') {
+    session.step = 'input_link_2';
+    bot.answerCallbackQuery(callbackQuery.id);
+    bot.sendMessage(chatId, 'Please send the link for 🎥𝐃𝗢𝗪𝗡𝗟𝗢𝗔𝗗.');
   }
+});
 
-  // Handle incoming content based on user state
-  bot.on('message', async (msg) => {
-    const chatId = msg.chat.id;
-    const userState = userPostCreationState[chatId];
+// Handle /view command to retrieve saved posts
+bot.onText(/\/view (.+)/, (msg, match) => {
+  const chatId = msg.chat.id;
+  const postId = match[1]; // Extract the post ID from the command
 
-    if (userState?.stage === 'waiting-for-content') {
-      const contentType = userState.contentType;
+  // Check if the post exists
+  if (storedPosts[postId]) {
+    const savedPost = storedPosts[postId];
+    const validButtons = savedPost.buttons.filter(button => button.url);
 
-      let inlinePost;
-      switch (contentType) {
-        case 'text':
-          inlinePost = {
-            type: 'article',
-            id: String(Date.now()),
-            title: 'Custom Text Post',
-            input_message_content: {
-              message_text: msg.text,
-            },
-          };
-          break;
-        case 'photo':
-          inlinePost = {
-            type: 'photo',
-            id: String(Date.now()),
-            photo_url: msg.photo[msg.photo.length - 1].file_id,
-            thumb_url: msg.photo[msg.photo.length - 1].file_id,
-          };
-          break;
-        case 'gif':
-          inlinePost = {
-            type: 'gif',
-            id: String(Date.now()),
-            gif_url: msg.document.file_id,
-            thumb_url: msg.document.file_id,
-          };
-          break;
-        case 'video':
-          inlinePost = {
-            type: 'video',
-            id: String(Date.now()),
-            video_url: msg.video.file_id,
-            thumb_url: msg.video.file_id,
-          };
-          break;
-        case 'sticker':
-          inlinePost = {
-            type: 'sticker',
-            id: String(Date.now()),
-            sticker_url: msg.sticker.file_id,
-            thumb_url: msg.sticker.file_id,
-          };
-          break;
-        default:
-          break;
-      }
+    const postOptions = {
+      reply_markup: {
+        inline_keyboard: [
+          validButtons.map(button => ({ text: button.text, url: button.url })),
+        ],
+      },
+      parse_mode: savedPost.post.caption_entities ? 'HTML' : undefined,
+    };
 
-      await bot.sendMessage(chatId, 'Your post has been created successfully! Use this as an inline post:');
-
-      // Store inline post data
-      userFavorites[chatId] = userFavorites[chatId] || [];
-      userFavorites[chatId].push(inlinePost);
-
-      // Reset user state after post creation
-      userPostCreationState[chatId] = null;
+    // Resend the saved post
+    if (savedPost.post.photo) {
+      bot.sendPhoto(chatId, savedPost.post.photo[savedPost.post.photo.length - 1].file_id, {
+        ...postOptions,
+        caption: savedPost.post.caption,
+      });
+    } else if (savedPost.post.text) {
+      bot.sendMessage(chatId, savedPost.post.text, postOptions);
     }
-  });
+  } else {
+    bot.sendMessage(chatId, `Post with ID "${postId}" not found.`);
+  }
+});
+
+// Log any errors related to polling
+bot.on('polling_error', (error) => {
+  console.error('Polling error:', error);
 });
