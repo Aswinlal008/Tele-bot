@@ -4,8 +4,6 @@ const crypto = require('crypto');
 const fs = require('fs');
 const moment = require('moment-timezone');
 
-
-const logFilePath = "./userActivityLogs.json";
 // File paths
 const storageFilePath = './storage.json';
 const botActionsLogFilePath = './bot_actions.log'; // Renamed
@@ -91,9 +89,16 @@ registerCommand(/\/start(.*)/, (msg, match) => {
   if (!token) {
     const welcomeMessage = 'Welcome to the bot! Please provide a valid token to access files.';
     
+    // Send the welcome message
+    bot.sendMessage(chatId, welcomeMessage);
+  
+    // Send the sticker
+    const stickerId = 'CAACAgIAAxkBAAIFemdiZIFpueSalCmgqs1SEwEc1o51AAJUAANBtVYMarf4xwiNAfo2BA'; // Sticker file_id
+    bot.sendSticker(chatId, stickerId);
+   
     // Creating an inline keyboard with contact and join group buttons
     const joinGroupButton = {
-      text: 'Join Our Channel/Group',
+      text: 'Our Channel',
       url: 'https://t.me/Discussionclouds' // Replace with your channel or group link
     };
 
@@ -136,7 +141,14 @@ registerCommand(/\/start(.*)/, (msg, match) => {
           }
         }
       })()
-      .then(() => bot.sendMessage(chatId, 'All files have been sent in order!'))
+      .then(() => {
+        // Sending the "thank you" sticker
+        bot.sendSticker(chatId, 'CAACAgIAAyEFAASIw5s0AAINuGdiYcH47KUxG6Ew1d6ibfa9qcMNAAJRAANBtVYM-ugutyIO5ug2BA')  // Replace 'STICKER_ID_HERE' with the actual sticker ID
+          .then(() => {
+            // Sending the "thank you" message
+            bot.sendMessage(chatId, 'Thank you for using the bot!');
+          });
+      })
       .catch(() => bot.sendMessage(chatId, 'Some files couldn\'t be sent.'));
     } else if (fileData.fileId) {
       // If a single file
@@ -645,49 +657,116 @@ registerCommand(/\/broadcast/, (msg) => {
   });
 });
 
+// Function to log user activities
+const logUserActivity = (userId, username, action) => {
+  // Create a log entry
+  const logEntry = {
+    userId,
+    username,
+    action,
+    time: new Date().toISOString(),
+  };
+
+  // Read existing logs or initialize a new array
+  let logs = [];
+  if (fs.existsSync(userActivityLogFilePath)) {
+    try {
+      logs = JSON.parse(fs.readFileSync(userActivityLogFilePath, "utf8")) || [];
+    } catch (error) {
+      console.error("Error reading or parsing log file:", error);
+    }
+  }
+
+  // Add the new log entry
+  logs.push(logEntry);
+
+  // Write back to the log file
+  fs.writeFileSync(userActivityLogFilePath, JSON.stringify(logs, null, 2), "utf8");
+};
+
 // Admin command to view user activity
-registerCommand(/\/useractivity/, (msg) => {
-  restrictAdminCommand(msg, () => {
-    const chatId = msg.chat.id;
+bot.onText(/\/useractivity/, (msg) => {
+  const adminId = 803543058; // Replace with the admin's Telegram user ID
+  const chatId = msg.chat.id;
 
-    // Check if the log file exists
-    if (!fs.existsSync(userActivityLogFilePath)) {
-      bot.sendMessage(chatId, "No user activity logs available.");
-      return;
-    }
+  // Restrict the command to the admin
+  if (msg.from.id !== adminId) {
+    bot.sendMessage(chatId, "You are not authorized to use this command.");
+    return;
+  }
 
-    // Read logs from the file
-    const logs = JSON.parse(fs.readFileSync(userActivityLogFilePath, "utf8") || "[]");
+  // Check if the log file exists
+  if (!fs.existsSync(userActivityLogFilePath)) {
+    bot.sendMessage(chatId, "No user activity logs available.");
+    return;
+  }
 
-    if (logs.length === 0) {
-      bot.sendMessage(chatId, "No user activity logs available.");
-      return;
-    }
+  // Read logs from the file
+  const logs = JSON.parse(fs.readFileSync(userActivityLogFilePath, "utf8") || "[]");
 
-    // Get the last 50 log entries
-    const recentLogs = logs.slice(-40); // Only the last 40 logs
+  if (logs.length === 0) {
+    bot.sendMessage(chatId, "No user activity logs available.");
+    return;
+  }
 
-    // Format logs into a readable message
-    const logMessage = recentLogs
-      .map((log, index) => {
-        const timeString = new Date(log.time).toLocaleString();
-        const username = log.username
-          ? `[@${log.username}](tg://user?id=${log.userId})`
-          : `\`${log.userId}\``;
-        return `${index + 1}. [${timeString}] ${username} - ${log.action}`;
-      })
-      .join("\n");
+  // Get the last 20 log entries
+  const recentLogs = logs.slice(-20);
 
-    // Ensure the final message fits within Telegram's limit
-    const trimmedMessage = logMessage.length > 3000
-      ? logMessage.substring(0, 3000) + "\n...\nLogs trimmed for length."
-      : logMessage;
+  // Format logs into a readable message
+  const logMessage = recentLogs
+    .map((log, index) => {
+      const timeString = new Date(log.time).toLocaleString();
+      const username = log.username
+        ? `[@${log.username}](tg://user?id=${log.userId})`
+        : `\`${log.userId}\``;
+      return `${index + 1}. [${timeString}] ${username} - ${log.action}`;
+    })
+    .join("\n");
 
-    // Send the logs as a single message
-    bot.sendMessage(chatId, `User Activity Logs (Last 50):\n\n${trimmedMessage}`, {
-      parse_mode: "Markdown",
-    });
+  // Ensure the final message fits within Telegram's limit
+  const trimmedMessage = logMessage.length > 3000
+    ? logMessage.substring(0, 3000) + "\n...\nLogs trimmed for length."
+    : logMessage;
+
+  // Send the logs as a single message
+  bot.sendMessage(chatId, `User Activity Logs (Last 20):\n\n${trimmedMessage}`, {
+    parse_mode: "Markdown",
   });
+});
+
+// Example usage: Logging user commands
+bot.onText(/\/.*/, (msg) => {
+  const userId = msg.from.id;
+  const username = msg.from.username || null;
+  const command = msg.text;
+
+  logUserActivity(userId, username, `Command executed: ${command}`);
+
+  // Handle commands normally...
+});
+
+// Example usage: Logging user messages
+bot.on('message', (msg) => {
+  if (msg.text) {
+    const userId = msg.from.id;
+    const username = msg.from.username || null;
+    const message = msg.text;
+
+    logUserActivity(userId, username, `Sent message: ${message}`);
+  }
+
+  // Handle other message logic...
+});
+
+// Example usage: Logging file uploads
+bot.on('document', (msg) => {
+  const userId = msg.from.id;
+  const username = msg.from.username || null;
+  const fileName = msg.document.file_name;
+
+  logUserActivity(userId, username, `Uploaded file: ${fileName}`);
+
+  // Handle file upload logic...
 });
 
 // Handle /status command

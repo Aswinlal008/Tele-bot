@@ -136,7 +136,14 @@ registerCommand(/\/start(.*)/, (msg, match) => {
           }
         }
       })()
-      .then(() => bot.sendMessage(chatId, 'All files have been sent in order!'))
+      .then(() => {
+        // Sending the "thank you" sticker
+        bot.sendSticker(chatId, CAACAgIAAyEFAASIw5s0AAINuGdiYcH47KUxG6Ew1d6ibfa9qcMNAAJRAANBtVYM-ugutyIO5ug2BA)  // Replace 'STICKER_ID_HERE' with the actual sticker ID
+          .then(() => {
+            // Sending the "thank you" message
+            bot.sendMessage(chatId, 'Thank you for using the bot!');
+          });
+      })
       .catch(() => bot.sendMessage(chatId, 'Some files couldn\'t be sent.'));
     } else if (fileData.fileId) {
       // If a single file
@@ -657,15 +664,15 @@ registerCommand(/\/useractivity/, (msg) => {
     }
 
     // Read logs from the file
-    const logs = JSON.parse(fs.readFileSync(userActivityLogFilePath, "utf8") || "[]");
+    const logs = JSON.parse(fs.readFileSync(userActivityLogFilePath, 'utf8') || '[]');
 
     if (logs.length === 0) {
       bot.sendMessage(chatId, "No user activity logs available.");
       return;
     }
 
-    // Get the last 50 log entries
-    const recentLogs = logs.slice(-40); // Only the last 40 logs
+    // Get the last 50 log entries (or fewer if there are less than 50)
+    const recentLogs = logs.slice(-30);
 
     // Format logs into a readable message
     const logMessage = recentLogs
@@ -678,14 +685,14 @@ registerCommand(/\/useractivity/, (msg) => {
       })
       .join("\n");
 
-    // Ensure the final message fits within Telegram's limit
+    // Ensure the final message fits within Telegram's limit (4096 characters max)
     const trimmedMessage = logMessage.length > 3000
       ? logMessage.substring(0, 3000) + "\n...\nLogs trimmed for length."
       : logMessage;
 
     // Send the logs as a single message
     bot.sendMessage(chatId, `User Activity Logs (Last 50):\n\n${trimmedMessage}`, {
-      parse_mode: "Markdown",
+      parse_mode: 'Markdown',
     });
   });
 });
