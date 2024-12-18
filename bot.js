@@ -7,7 +7,8 @@ const moment = require('moment-timezone');
 // File paths
 const storageFilePath = './storage.json';
 const botActionsLogFilePath = './bot_actions.log'; // Renamed
-const userActivityLogFilePath = './userActivityLogs.json'; // Renamed
+const userActivityLogFilePath = './userActivityLogs.json'; // Path to the user activity log file
+const cloudUsersFilePath = './cloudUsers.json'; // Path to store cloud user IDs
 
 // Read storage file
 function readStorage() {
@@ -189,7 +190,8 @@ registerCommand(/\/helpadmin/, (msg) => {
   \n/clearlogs - Clear action logs
   \n/exportfiles - Generate and download a file containing the details of all stored files or batches, including names, tokens, access links, types, sizes, and timestamps.
   \n/broadcast - Send a message to all users
-  \n/useractivity - View a list of user activities (last 50 actions)`;
+  \n/useractivity - View a list of user activities (last 50 actions)
+  \n/cloudusers - View the list of users who have interacted with the bot.`;
     bot.sendMessage(chatId, adminHelpMessage);
   });
 });
@@ -288,8 +290,6 @@ bot.on('message', (msg) => {
     }
   }
 });
-
-
 
 // Handle /deletefile command
 registerCommand(/\/deletefile (\w{32})/, (msg, match) => {
@@ -594,68 +594,124 @@ function restrictAdminCommand(msg, callback) {
 }
 
 // Handle /broadcast command
-registerCommand(/\/broadcast/, (msg) => {
+let pendingBroadcastMessage = null; // To store the pending message for confirmation
+
+// Admin command to initiate a broadcast
+bot.on('message', (msg) => {
   restrictAdminCommand(msg, () => {
     const chatId = msg.chat.id;
 
-    // Check if the admin replied to a message (sticker, media, or text)
-    if (!msg.reply_to_message) {
-      bot.sendMessage(chatId, "Please reply to the message you want to broadcast.");
+    // Check if the admin is initiating a broadcast
+    if (msg.text && msg.text.startsWith('/broadcast')) {
+      if (!pendingBroadcastMessage) {
+        bot.sendMessage(
+          chatId,
+          'Please send the message (text, media, sticker, or forwarded message) that you want to broadcast. Use /cancel to abort.'
+        );
+        pendingBroadcastMessage = { chatId }; // Store the chatId for confirmation
+      } else {
+        bot.sendMessage(chatId, 'You already have a pending broadcast message. Use /cancel to abort.');
+      }
       return;
     }
 
-    const messageToBroadcast = msg.reply_to_message;
+    // If there is a pending broadcast, save the message for confirmation
+    if (pendingBroadcastMessage && msg.chat.id === pendingBroadcastMessage.chatId) {
+      pendingBroadcastMessage.message = msg; // Store the message object
 
-    // Preview the message for the admin
-    bot.copyMessage(chatId, chatId, messageToBroadcast.message_id)
-      .then(() => {
-        // Send confirmation message after preview
-        bot.sendMessage(
-          chatId,
-          "Here is the message to be broadcasted. Reply with 'Publish' to confirm or 'Cancel' to abort."
-        );
-      })
-      .catch((err) => {
-        console.error("Error copying message:", err);
-        bot.sendMessage(chatId, "Failed to preview the broadcast message. Please try again.");
-        return;
-      });
+      // Inline buttons for confirmation
+      const confirmButtons = {
+        reply_markup: {
+          inline_keyboard: [
+            [
+              { text: '✅ Yes, Send', callback_data: 'confirm_broadcast' },
+              { text: '❌ No, Cancel', callback_data: 'cancel_broadcast' },
+            ],
+          ],
+        },
+      };
 
-    // Listen for confirmation or cancellation
-    const confirmListener = bot.on('message', (response) => {
-      if (response.chat.id === chatId) {
-        const confirmation = response.text.toLowerCase();
-        if (confirmation === 'publish') {
-          bot.removeListener('message', confirmListener);
-
-          // Start broadcasting
-          bot.sendMessage(chatId, "Broadcast is starting...");
-          let successCount = 0;
-          let failureCount = 0;
-
-          registeredUsers.forEach((userId) => {
-            bot.copyMessage(userId, chatId, messageToBroadcast.message_id)
-              .then(() => successCount++)
-              .catch(() => failureCount++);
-          });
-
-          // Inform the admin of the broadcast status
-          setTimeout(() => {
-            bot.sendMessage(
-              chatId,
-              `Broadcast complete:\n✅ Sent to: ${successCount} users\n❌ Failed to send to: ${failureCount} users`
-            );
-          }, 3000);
-        } else if (confirmation === 'cancel') {
-          bot.removeListener('message', confirmListener);
-          bot.sendMessage(chatId, "Broadcast cancelled.");
-        } else {
-          bot.sendMessage(chatId, "Unrecognized command. Reply with 'Publish' to confirm or 'Cancel' to abort.");
+      bot.sendMessage(
+        chatId,
+        'This is the message you want to broadcast:\n\nPlease confirm:',
+        {
+          reply_to_message_id: msg.message_id,
+          ...confirmButtons,
         }
-      }
-    });
+      );
+    }
   });
 });
+
+// Handle confirmation and cancellation via inline buttons
+bot.on('callback_query', (callbackQuery) => {
+  const chatId = callbackQuery.message.chat.id;
+  const data = callbackQuery.data;
+
+  if (!pendingBroadcastMessage || pendingBroadcastMessage.chatId !== chatId) return;
+
+  if (data === 'confirm_broadcast') {
+    // Read cloud users
+    if (!fs.existsSync(cloudUsersFilePath)) {
+      bot.sendMessage(chatId, 'No users have been added yet for broadcasting.');
+      pendingBroadcastMessage = null;
+      return;
+    }
+
+    let cloudUsers = [];
+    try {
+      cloudUsers = JSON.parse(fs.readFileSync(cloudUsersFilePath, 'utf8')) || [];
+    } catch (error) {
+      console.error('Error reading or parsing cloud user file:', error);
+      bot.sendMessage(chatId, 'An error occurred while retrieving the cloud user list.');
+      pendingBroadcastMessage = null;
+      return;
+    }
+
+    if (cloudUsers.length === 0) {
+      bot.sendMessage(chatId, 'No users have been added yet for broadcasting.');
+      pendingBroadcastMessage = null;
+      return;
+    }
+
+    const { message } = pendingBroadcastMessage;
+
+    // Broadcast the message
+    cloudUsers.forEach((user) => {
+      bot.copyMessage(user.id, message.chat.id, message.message_id).catch((error) => {
+        console.error(`Failed to send message to user ${user.id}:`, error.message);
+      });
+    });
+
+    // Notify the admin
+    bot.sendMessage(chatId, `Message broadcasted to ${cloudUsers.length} users.`);
+    pendingBroadcastMessage = null;
+
+    // Acknowledge the button press
+    bot.answerCallbackQuery(callbackQuery.id, { text: 'Broadcast sent successfully!' });
+  } else if (data === 'cancel_broadcast') {
+    bot.sendMessage(chatId, 'Broadcast cancelled.');
+    pendingBroadcastMessage = null;
+
+    // Acknowledge the button press
+    bot.answerCallbackQuery(callbackQuery.id, { text: 'Broadcast cancelled.' });
+  }
+});
+
+// Command to cancel the broadcast manually
+registerCommand(/\/cancel/, (msg) => {
+  restrictAdminCommand(msg, () => {
+    const chatId = msg.chat.id;
+
+    if (pendingBroadcastMessage && pendingBroadcastMessage.chatId === chatId) {
+      pendingBroadcastMessage = null;
+      bot.sendMessage(chatId, 'Broadcast cancelled.');
+    } else {
+      bot.sendMessage(chatId, 'No pending broadcast to cancel.');
+    }
+  });
+});
+
 
 // Function to log user activities
 const logUserActivity = (userId, username, action) => {
@@ -767,6 +823,84 @@ bot.on('document', (msg) => {
   logUserActivity(userId, username, `Uploaded file: ${fileName}`);
 
   // Handle file upload logic...
+});
+
+// Function to add a user to cloudUsers.json
+const addCloudUser = (user) => {
+  let cloudUsers = [];
+
+  // Read existing users from the file
+  if (fs.existsSync(cloudUsersFilePath)) {
+    try {
+      cloudUsers = JSON.parse(fs.readFileSync(cloudUsersFilePath, 'utf8')) || [];
+    } catch (error) {
+      console.error('Error reading or parsing cloud user file:', error);
+    }
+  }
+
+  // Check if the user already exists
+  const userExists = cloudUsers.some((u) => u.id === user.id);
+  if (!userExists) {
+    cloudUsers.push(user);
+
+    // Save updated list back to the file
+    fs.writeFileSync(cloudUsersFilePath, JSON.stringify(cloudUsers, null, 2), 'utf8');
+  }
+};
+
+// Command to handle /cloudusers
+registerCommand(/\/cloudusers/, (msg) => {
+  restrictAdminCommand(msg, () => {
+    const chatId = msg.chat.id;
+
+    // Check if the cloudUsers file exists
+    if (!fs.existsSync(cloudUsersFilePath)) {
+      bot.sendMessage(chatId, 'No users have been added yet.');
+      return;
+    }
+
+    // Read the cloud users from the file
+    let cloudUsers = [];
+    try {
+      cloudUsers = JSON.parse(fs.readFileSync(cloudUsersFilePath, 'utf8')) || [];
+    } catch (error) {
+      console.error('Error reading or parsing cloud user file:', error);
+      bot.sendMessage(chatId, 'An error occurred while retrieving the cloud user list.');
+      return;
+    }
+
+    // If there are no users, send a message
+    if (cloudUsers.length === 0) {
+      bot.sendMessage(chatId, 'No users have been added yet.');
+      return;
+    }
+
+    // Format the user data into a readable message
+    const userListMessage = cloudUsers
+      .map((user, index) => {
+        const username = user.username
+          ? `[@${user.username}](tg://user?id=${user.id})`
+          : `[User ID: ${user.id}](tg://user?id=${user.id})`;
+        return `${index + 1}. ${username}`;
+      })
+      .join('\n');
+
+    // Send the list of cloud users
+    bot.sendMessage(chatId, `Cloud Users:\n\n${userListMessage}`, { parse_mode: 'Markdown' });
+  });
+});
+
+// Track users who use the bot
+bot.on('message', (msg) => {
+  const user = {
+    id: msg.from.id,
+    username: msg.from.username || null, // Save username if available
+  };
+
+  // Add the user to the cloudUsers list
+  addCloudUser(user);
+
+  // Handle other message logic if needed...
 });
 
 // Handle /status command
