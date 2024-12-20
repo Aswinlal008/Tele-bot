@@ -1,4 +1,4 @@
-// Import required packages ISEECloud_bot
+// Import required packages Jabajaba_bot
 const TelegramBot = require('node-telegram-bot-api');
 const crypto = require('crypto');
 const fs = require('fs');

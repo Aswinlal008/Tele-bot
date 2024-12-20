@@ -52,12 +52,12 @@ bot.onText(/\/help/, (msg) => {
   const helpMessage = `
 Here is how to use the bot:
 
-1. **/newpost** - Start creating a new post. You can add buttons with links to your post.
-2. **Send your post** - It can be a text or media message (with caption).
-3. **Add links** - After sending your post, the bot will ask you to input the links for the buttons.
-4. **Confirm Post** - After adding the links, the bot will display the post with the buttons for confirmation.
-5. **/view [Post ID]** - View a saved post by ID.
-6. **/postids** - View the list of post IDs.
+1. /newpost - Start creating a new post. You can add buttons with links to your post.
+2. Send your post - It can be a text or media message (with caption).
+3. Add links - After sending your post, the bot will ask you to input the links for the buttons.
+4. Confirm Post - After adding the links, the bot will display the post with the buttons for confirmation.
+5. /view [Post ID] - View a saved post by ID.
+6. /postids - View the list of post IDs.
 
 For further assistance, feel free to reach out!`;
 
@@ -77,16 +77,20 @@ bot.onText(/\/postids/, (msg) => {
   // List all post IDs in order and number them
   const postIds = Object.keys(storedPosts).sort((a, b) => parseInt(a.split('_')[1]) - parseInt(b.split('_')[1]));
 
-// Prepare the list of post IDs with /view prefix
-const postIdsMessage = `Here are the post IDs in order:\n\n${postIds.map((postId, index) => `/view <code>${postId}</code> - Post #<code>${index + 1}</code>`).join('\n')}`;
+  // Prepare the list of post IDs with /view prefix
+  const postIdsMessage = `Here are the post IDs in order:\n\n${postIds.map((postId, index) => `/view <code>${postId}</code> - Post #<code>${index + 1}</code>`).join('\n')}`;
 
-bot.sendMessage(chatId, postIdsMessage, { parse_mode: 'HTML' });
+  bot.sendMessage(chatId, postIdsMessage, { parse_mode: 'HTML' });
 });
-
 
 // Handle received messages
 bot.on('message', (msg) => {
   const chatId = msg.chat.id;
+
+  // Check if the bot is mentioned
+  if (msg.text && msg.text.includes(`@${bot.username}`)) {
+    bot.sendMessage(chatId, `via @Cloudmaker2`);
+  }
 
   if (!userSessions[chatId]) return;
 
@@ -94,6 +98,11 @@ bot.on('message', (msg) => {
 
   if (session.step === 'await_post') {
     session.post = msg;
+    session.step = 'input_filename'; // Prompt for filename
+
+    bot.sendMessage(chatId, 'Please provide a name for the file (e.g., "MyPost").');
+  } else if (session.step === 'input_filename') {
+    session.filename = msg.text; // Save the filename
     session.step = 'choose_buttons';
 
     bot.sendMessage(chatId, 'Choose an option to attach links:', {
@@ -113,12 +122,13 @@ bot.on('message', (msg) => {
     storedPosts[postId] = {
       post: session.post,
       buttons: session.buttons,
+      filename: session.filename, // Include the filename
     };
 
     savePostsToFile();
 
     // Send confirmation with the post ID
-    bot.sendMessage(chatId, `Link added successfully!\n\nPost ID: \`${postId}\`\nThis ID has been saved for your reference.`);
+    bot.sendMessage(chatId, `Link added successfully!\n\nPost ID: \`/view_${postId}\`\nThis ID has been saved for your reference.`);
 
     session.step = 'confirm_post';
 
@@ -134,15 +144,15 @@ bot.on('message', (msg) => {
       parse_mode: session.post.caption_entities ? 'HTML' : undefined,
     };
 
-    const accessLink = `https://t.me/${bot.username}?start=${session.post.text ? session.post.text.split(' ')[0] : 'unknown'}`;
+    // Generate access link with post ID
+    const accessLink = `/view_${postId}`;
 
     // Send message with bot username and post ID in monospace format
-    bot.sendMessage(chatId, `Here is the post you created:\n\n${session.post.text}\n\nPost ID: \`${postId}\`\nAccess Link: [Click here](${accessLink})`);
+    bot.sendMessage(chatId, `Here is the post you created:\n\n${session.post.text}\n\nPost ID: \`${accessLink}\`\nAccess Link: ${accessLink}`);
 
     delete userSessions[chatId];
   }
 });
-
 
 // Handle button clicks
 bot.on('callback_query', (callbackQuery) => {
