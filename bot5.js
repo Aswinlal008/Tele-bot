@@ -1,15 +1,15 @@
-// Import required packages Jabajaba_bot
+// Import required packages ISEECloud_bot
 const TelegramBot = require('node-telegram-bot-api');
 const crypto = require('crypto');
 const fs = require('fs');
 const moment = require('moment-timezone');
 
-
-const logFilePath = "./userActivityLogs.json";
 // File paths
 const storageFilePath = './storage.json';
 const botActionsLogFilePath = './bot_actions.log'; // Renamed
-const userActivityLogFilePath = './userActivityLogs.json'; // Renamed
+const userActivityLogFilePath = './userActivityLogs.json'; // Path to the user activity log file
+const cloudUsersFilePath = './cloudUsers.json'; // Path to store cloud user IDs
+const userRatingsFilePath = './userRatings.json'; // File to store user ratings
 
 // Read storage file
 function readStorage() {
@@ -47,7 +47,7 @@ function getCurrentTime() {
 
 // Telegram Bot credentials
 const token = '5194771522:AAEbqOMVqNRBkpV406YjOhcNv4l8HXT8B9s'; // Replace with your bot token
-const botUsername = 'Jabajaba_bot'; // Replace with your bot's username
+const botUsername = 'ISEECloud_bot'; // Replace with your bot's username
 const adminUserId = 803543058; // Replace with admin's user_id
 
 // Initialize the bot
@@ -56,6 +56,11 @@ const bot = new TelegramBot(token, { polling: true });
 // Initialize storage
 const fileStore = readStorage();
 let batchToken = null;
+
+// Ensure the JSON file exists
+if (!fs.existsSync(userRatingsFilePath)) {
+  fs.writeFileSync(userRatingsFilePath, JSON.stringify([])); // Initialize as an empty array
+}
 
 // Helper function to check if the user is an admin
 function isAdmin(msg) {
@@ -82,71 +87,71 @@ function registerCommand(command, callback) {
   }
 }
 
+
 // Handle /start command
 registerCommand(/\/start(.*)/, (msg, match) => {
   const chatId = msg.chat.id;
   const token = match[1].trim();
 
-  // If no token is provided, send a welcome message with a contact button and join group link
   if (!token) {
     const welcomeMessage = 'Welcome to the bot! Please provide a valid token to access files.';
-    
-    // Creating an inline keyboard with contact and join group buttons
-    const joinGroupButton = {
-      text: 'Join Our Channel/Group',
-      url: 'https://t.me/Discussionclouds' // Replace with your channel or group link
-    };
+    const stickerId = 'CAACAgIAAxkBAAIFemdiZIFpueSalCmgqs1SEwEc1o51AAJUAANBtVYMarf4xwiNAfo2BA'; // Sticker file_id
 
-    const contactButton = {
-      text: 'Contact Support',
-      url: 'https://t.me/aswinlalus' // Replace with your contact link or support link
-    };
-    
-    const inlineKeyboard = {
-      inline_keyboard: [
-        [joinGroupButton], 
-        [contactButton]
-      ]
-    };
-
+    bot.sendSticker(chatId, stickerId);
     bot.sendMessage(chatId, welcomeMessage, {
-      reply_markup: inlineKeyboard
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: 'Our Channel', url: 'https://t.me/Discussionclouds' }],
+          [{ text: 'Contact Support', url: 'https://t.me/aswinlalus' }]
+        ]
+      }
     });
     return;
   }
 
-  // If a token is provided
   if (token && fileStore[token]) {
     const fileData = fileStore[token];
 
     if (fileData.files && fileData.files.length > 0) {
-      // Sort the files (optional: already stored sequentially in the array)
-      const sortedFiles = fileData.files;
-
-      // Send files sequentially in order
       (async () => {
-        for (const file of sortedFiles) {
+        for (const file of fileData.files) {
           try {
-            await bot.sendDocument(chatId, file.fileId, {
-              caption: file.fileName
-            });
+            await bot.sendDocument(chatId, file.fileId, { caption: file.fileName });
           } catch (error) {
             console.error(`Error sending file ${file.fileId}:`, error);
             await bot.sendMessage(chatId, `Failed to send file: ${file.fileName}`);
           }
         }
       })()
-      .then(() => {
-        // Sending the "thank you" sticker
-        bot.sendSticker(chatId, CAACAgIAAyEFAASIw5s0AAINuGdiYcH47KUxG6Ew1d6ibfa9qcMNAAJRAANBtVYM-ugutyIO5ug2BA)  // Replace 'STICKER_ID_HERE' with the actual sticker ID
-          .then(() => {
-            // Sending the "thank you" message
-            bot.sendMessage(chatId, 'Thank you for using the bot!');
+        .then(() => {
+          bot.sendSticker(chatId, 'CAACAgIAAyEFAASIw5s0AAINuGdiYcH47KUxG6Ew1d6ibfa9qcMNAAJRAANBtVYM-ugutyIO5ug2BA');
+          bot.sendMessage(chatId, 'Thank you for using the bot!');
+          bot.sendMessage(chatId, 'How would you rate your experience with the bot?', {
+            reply_markup: {
+              inline_keyboard: [
+                [
+                  { text: '1️⃣', callback_data: 'rate_1' },
+                  { text: '2️⃣', callback_data: 'rate_2' },
+                  { text: '3️⃣', callback_data: 'rate_3' },
+                  { text: '4️⃣', callback_data: 'rate_4' },
+                  { text: '5️⃣', callback_data: 'rate_5' }
+                ],
+                [
+                  { text: '6️⃣', callback_data: 'rate_6' },
+                  { text: '7️⃣', callback_data: 'rate_7' },
+                  { text: '8️⃣', callback_data: 'rate_8' },
+                  { text: '9️⃣', callback_data: 'rate_9' },
+                  { text: '🔟', callback_data: 'rate_10' }
+                ]
+              ]
+            }
           });
-      })
-      .catch(() => bot.sendMessage(chatId, 'Some files couldn\'t be sent.'));
+        })
+        .catch((error) => {
+          console.error('Error after sending files:', error);
+          bot.sendMessage(chatId, 'Some files couldn\'t be sent.');
+        });
     } else if (fileData.fileId) {
-      // If a single file
       bot.sendDocument(chatId, fileData.fileId)
         .then(() => bot.sendMessage(chatId, 'Here is your requested file!'))
         .catch((error) => {
@@ -158,6 +163,54 @@ registerCommand(/\/start(.*)/, (msg, match) => {
     }
   } else {
     bot.sendMessage(chatId, 'Invalid token! No file or batch found.');
+  }
+});
+
+// Handle ratings callback
+bot.on('callback_query', (callbackQuery) => {
+  const chatId = callbackQuery.message.chat.id;
+  const data = callbackQuery.data;
+
+  if (data.startsWith('rate_')) {
+    const rating = parseInt(data.split('_')[1], 10);
+
+    if (rating >= 1 && rating <= 10) {
+      const ratingEmojis = ['😭', '😢', '🥺', '😕', '😐', '🙂', '😉', '😌', '😘', '😍'];
+      const emoji = ratingEmojis[rating - 1];
+
+      const userId = callbackQuery.from.id;
+      const username = callbackQuery.from.username || null;
+
+      // Read ratings
+      let userRatings;
+      try {
+        userRatings = JSON.parse(fs.readFileSync(userRatingsFilePath, 'utf8'));
+      } catch (error) {
+        console.error('Error reading ratings file:', error);
+        userRatings = [];
+      }
+
+      // Update or add the rating
+      const existingUserIndex = userRatings.findIndex((entry) => entry.userId === userId);
+      if (existingUserIndex !== -1) {
+        userRatings[existingUserIndex].rating = rating;
+      } else {
+        userRatings.push({ userId, username, rating });
+      }
+
+      // Save updated ratings
+      try {
+        fs.writeFileSync(userRatingsFilePath, JSON.stringify(userRatings, null, 2));
+      } catch (error) {
+        console.error('Error saving ratings file:', error);
+      }
+
+      bot.sendMessage(chatId, `Thank you for rating us ${rating} out of 10! ${emoji}`);
+    } else {
+      bot.sendMessage(chatId, 'Invalid rating. Please try again.');
+    }
+
+    bot.answerCallbackQuery(callbackQuery.id);
   }
 });
 
@@ -184,7 +237,9 @@ registerCommand(/\/helpadmin/, (msg) => {
   \n/clearlogs - Clear action logs
   \n/exportfiles - Generate and download a file containing the details of all stored files or batches, including names, tokens, access links, types, sizes, and timestamps.
   \n/broadcast - Send a message to all users
-  \n/useractivity - View a list of user activities (last 50 actions)`;
+  \n/useractivity - View a list of user activities (last 50 actions)
+  \n/viewrating - View the bot's average user rating
+  \n/cloudusers - View the list of users who have interacted with the bot.`;
     bot.sendMessage(chatId, adminHelpMessage);
   });
 });
@@ -283,8 +338,6 @@ bot.on('message', (msg) => {
     }
   }
 });
-
-
 
 // Handle /deletefile command
 registerCommand(/\/deletefile (\w{32})/, (msg, match) => {
@@ -546,6 +599,34 @@ registerCommand(/\/exportfiles/, (msg) => {
   });
 });
 
+// Handle /viewrating command
+registerCommand(/\/viewrating/, (msg) => {
+  const chatId = msg.chat.id;
+
+  // Read user ratings from the file
+  let userRatings;
+  try {
+    userRatings = JSON.parse(fs.readFileSync(userRatingsFilePath, 'utf8'));
+  } catch (error) {
+    console.error('Error reading ratings file:', error);
+    bot.sendMessage(chatId, 'Could not fetch ratings at the moment. Please try again later.');
+    return;
+  }
+
+  // Check if there are ratings
+  if (userRatings.length === 0) {
+    bot.sendMessage(chatId, 'No ratings have been submitted yet.');
+    return;
+  }
+
+  // Calculate the average rating
+  const totalRating = userRatings.reduce((sum, entry) => sum + parseInt(entry.rating, 10), 0);
+  const averageRating = (totalRating / userRatings.length).toFixed(2);
+
+  // Send the average rating to the user
+  bot.sendMessage(chatId, `The bot's average rating is: ${averageRating} / 10 🌟`);
+});
+
 // Handle /files command
 registerCommand(/\/files/, (msg) => {
   restrictAdminCommand(msg, () => {
@@ -557,7 +638,6 @@ registerCommand(/\/files/, (msg) => {
       bot.sendMessage(chatId, 'No files or batches found.');
       return;
     }
-
     // Create a list of files in the "1. **File name** - [Access Link](file_access_link)" format
     let fileList = '';
     fileTokens.forEach((token, index) => {
@@ -566,7 +646,7 @@ registerCommand(/\/files/, (msg) => {
       const accessLink = `https://t.me/${botUsername}?start=${token}`;
       
       // Add each file info in the required format with bold file name and clickable access link
-      fileList += `${index + 1}. *${fileName}* - [Access Link](${accessLink})\n`;
+      fileList += `${index + 1}. **${fileName}** - [Access Link](${accessLink})\n`;
     });
 
     // Send the list of files to the admin with Markdown formatting enabled
@@ -589,112 +669,313 @@ function restrictAdminCommand(msg, callback) {
 }
 
 // Handle /broadcast command
-registerCommand(/\/broadcast/, (msg) => {
+let pendingBroadcastMessage = null; // To store the pending message for confirmation
+
+// Admin command to initiate a broadcast
+bot.on('message', (msg) => {
   restrictAdminCommand(msg, () => {
     const chatId = msg.chat.id;
 
-    // Check if the admin replied to a message (sticker, media, or text)
-    if (!msg.reply_to_message) {
-      bot.sendMessage(chatId, "Please reply to the message you want to broadcast.");
+    // Check if the admin is initiating a broadcast
+    if (msg.text && msg.text.startsWith('/broadcast')) {
+      if (!pendingBroadcastMessage) {
+        bot.sendMessage(
+          chatId,
+          'Please send the message (text, media, sticker, or forwarded message) that you want to broadcast. Use /cancel to abort.'
+        );
+        pendingBroadcastMessage = { chatId }; // Store the chatId for confirmation
+      } else {
+        bot.sendMessage(chatId, 'You already have a pending broadcast message. Use /cancel to abort.');
+      }
       return;
     }
 
-    const messageToBroadcast = msg.reply_to_message;
+    // If there is a pending broadcast, save the message for confirmation
+    if (pendingBroadcastMessage && msg.chat.id === pendingBroadcastMessage.chatId) {
+      pendingBroadcastMessage.message = msg; // Store the message object
 
-    // Preview the message for the admin
-    bot.copyMessage(chatId, chatId, messageToBroadcast.message_id)
-      .then(() => {
-        // Send confirmation message after preview
-        bot.sendMessage(
-          chatId,
-          "Here is the message to be broadcasted. Reply with 'Publish' to confirm or 'Cancel' to abort."
-        );
-      })
-      .catch((err) => {
-        console.error("Error copying message:", err);
-        bot.sendMessage(chatId, "Failed to preview the broadcast message. Please try again.");
-        return;
-      });
+      // Inline buttons for confirmation
+      const confirmButtons = {
+        reply_markup: {
+          inline_keyboard: [
+            [
+              { text: '✅ Yes, Send', callback_data: 'confirm_broadcast' },
+              { text: '❌ No, Cancel', callback_data: 'cancel_broadcast' },
+            ],
+          ],
+        },
+      };
 
-    // Listen for confirmation or cancellation
-    const confirmListener = bot.on('message', (response) => {
-      if (response.chat.id === chatId) {
-        const confirmation = response.text.toLowerCase();
-        if (confirmation === 'publish') {
-          bot.removeListener('message', confirmListener);
-
-          // Start broadcasting
-          bot.sendMessage(chatId, "Broadcast is starting...");
-          let successCount = 0;
-          let failureCount = 0;
-
-          registeredUsers.forEach((userId) => {
-            bot.copyMessage(userId, chatId, messageToBroadcast.message_id)
-              .then(() => successCount++)
-              .catch(() => failureCount++);
-          });
-
-          // Inform the admin of the broadcast status
-          setTimeout(() => {
-            bot.sendMessage(
-              chatId,
-              `Broadcast complete:\n✅ Sent to: ${successCount} users\n❌ Failed to send to: ${failureCount} users`
-            );
-          }, 3000);
-        } else if (confirmation === 'cancel') {
-          bot.removeListener('message', confirmListener);
-          bot.sendMessage(chatId, "Broadcast cancelled.");
-        } else {
-          bot.sendMessage(chatId, "Unrecognized command. Reply with 'Publish' to confirm or 'Cancel' to abort.");
+      bot.sendMessage(
+        chatId,
+        'This is the message you want to broadcast:\n\nPlease confirm:',
+        {
+          reply_to_message_id: msg.message_id,
+          ...confirmButtons,
         }
-      }
-    });
+      );
+    }
   });
 });
 
-// Admin command to view user activity
-registerCommand(/\/useractivity/, (msg) => {
+// Handle confirmation and cancellation via inline buttons
+bot.on('callback_query', (callbackQuery) => {
+  const chatId = callbackQuery.message.chat.id;
+  const data = callbackQuery.data;
+
+  if (!pendingBroadcastMessage || pendingBroadcastMessage.chatId !== chatId) return;
+
+  if (data === 'confirm_broadcast') {
+    // Read cloud users
+    if (!fs.existsSync(cloudUsersFilePath)) {
+      bot.sendMessage(chatId, 'No users have been added yet for broadcasting.');
+      pendingBroadcastMessage = null;
+      return;
+    }
+
+    let cloudUsers = [];
+    try {
+      cloudUsers = JSON.parse(fs.readFileSync(cloudUsersFilePath, 'utf8')) || [];
+    } catch (error) {
+      console.error('Error reading or parsing cloud user file:', error);
+      bot.sendMessage(chatId, 'An error occurred while retrieving the cloud user list.');
+      pendingBroadcastMessage = null;
+      return;
+    }
+
+    if (cloudUsers.length === 0) {
+      bot.sendMessage(chatId, 'No users have been added yet for broadcasting.');
+      pendingBroadcastMessage = null;
+      return;
+    }
+
+    const { message } = pendingBroadcastMessage;
+
+    // Broadcast the message
+    cloudUsers.forEach((user) => {
+      bot.copyMessage(user.id, message.chat.id, message.message_id).catch((error) => {
+        console.error(`Failed to send message to user ${user.id}:`, error.message);
+      });
+    });
+
+    // Notify the admin
+    bot.sendMessage(chatId, `Message broadcasted to ${cloudUsers.length} users.`);
+    pendingBroadcastMessage = null;
+
+    // Acknowledge the button press
+    bot.answerCallbackQuery(callbackQuery.id, { text: 'Broadcast sent successfully!' });
+  } else if (data === 'cancel_broadcast') {
+    bot.sendMessage(chatId, 'Broadcast cancelled.');
+    pendingBroadcastMessage = null;
+
+    // Acknowledge the button press
+    bot.answerCallbackQuery(callbackQuery.id, { text: 'Broadcast cancelled.' });
+  }
+});
+
+// Command to cancel the broadcast manually
+registerCommand(/\/cancel/, (msg) => {
   restrictAdminCommand(msg, () => {
     const chatId = msg.chat.id;
 
-    // Check if the log file exists
-    if (!fs.existsSync(userActivityLogFilePath)) {
-      bot.sendMessage(chatId, "No user activity logs available.");
-      return;
+    if (pendingBroadcastMessage && pendingBroadcastMessage.chatId === chatId) {
+      pendingBroadcastMessage = null;
+      bot.sendMessage(chatId, 'Broadcast cancelled.');
+    } else {
+      bot.sendMessage(chatId, 'No pending broadcast to cancel.');
     }
-
-    // Read logs from the file
-    const logs = JSON.parse(fs.readFileSync(userActivityLogFilePath, 'utf8') || '[]');
-
-    if (logs.length === 0) {
-      bot.sendMessage(chatId, "No user activity logs available.");
-      return;
-    }
-
-    // Get the last 50 log entries (or fewer if there are less than 50)
-    const recentLogs = logs.slice(-30);
-
-    // Format logs into a readable message
-    const logMessage = recentLogs
-      .map((log, index) => {
-        const timeString = new Date(log.time).toLocaleString();
-        const username = log.username
-          ? `[@${log.username}](tg://user?id=${log.userId})`
-          : `\`${log.userId}\``;
-        return `${index + 1}. [${timeString}] ${username} - ${log.action}`;
-      })
-      .join("\n");
-
-    // Ensure the final message fits within Telegram's limit (4096 characters max)
-    const trimmedMessage = logMessage.length > 3000
-      ? logMessage.substring(0, 3000) + "\n...\nLogs trimmed for length."
-      : logMessage;
-
-    // Send the logs as a single message
-    bot.sendMessage(chatId, `User Activity Logs (Last 50):\n\n${trimmedMessage}`, {
-      parse_mode: 'Markdown',
-    });
   });
+});
+
+
+// Function to log user activities
+const logUserActivity = (userId, username, action) => {
+  // Create a log entry
+  const logEntry = {
+    userId,
+    username,
+    action,
+    time: new Date().toISOString(),
+  };
+
+  // Read existing logs or initialize a new array
+  let logs = [];
+  if (fs.existsSync(userActivityLogFilePath)) {
+    try {
+      logs = JSON.parse(fs.readFileSync(userActivityLogFilePath, "utf8")) || [];
+    } catch (error) {
+      console.error("Error reading or parsing log file:", error);
+    }
+  }
+
+  // Add the new log entry
+  logs.push(logEntry);
+
+  // Write back to the log file
+  fs.writeFileSync(userActivityLogFilePath, JSON.stringify(logs, null, 2), "utf8");
+};
+
+// Admin command to view user activity
+bot.onText(/\/useractivity/, (msg) => {
+  const adminId = 803543058; // Replace with the admin's Telegram user ID
+  const chatId = msg.chat.id;
+
+  // Restrict the command to the admin
+  if (msg.from.id !== adminId) {
+    bot.sendMessage(chatId, "You are not authorized to use this command.");
+    return;
+  }
+
+  // Check if the log file exists
+  if (!fs.existsSync(userActivityLogFilePath)) {
+    bot.sendMessage(chatId, "No user activity logs available.");
+    return;
+  }
+
+  // Read logs from the file
+  const logs = JSON.parse(fs.readFileSync(userActivityLogFilePath, "utf8") || "[]");
+
+  if (logs.length === 0) {
+    bot.sendMessage(chatId, "No user activity logs available.");
+    return;
+  }
+
+  // Get the last 20 log entries
+  const recentLogs = logs.slice(-20);
+
+  // Format logs into a readable message
+  const logMessage = recentLogs
+    .map((log, index) => {
+      const timeString = new Date(log.time).toLocaleString();
+      const username = log.username
+        ? `[@${log.username}](tg://user?id=${log.userId})`
+        : `\`${log.userId}\``;
+      return `${index + 1}. [${timeString}] ${username} - ${log.action}`;
+    })
+    .join("\n");
+
+  // Ensure the final message fits within Telegram's limit
+  const trimmedMessage = logMessage.length > 3000
+    ? logMessage.substring(0, 3000) + "\n...\nLogs trimmed for length."
+    : logMessage;
+
+  // Send the logs as a single message
+  bot.sendMessage(chatId, `User Activity Logs (Last 20):\n\n${trimmedMessage}`, {
+    parse_mode: "Markdown",
+  });
+});
+
+// Example usage: Logging user commands
+bot.onText(/\/.*/, (msg) => {
+  const userId = msg.from.id;
+  const username = msg.from.username || null;
+  const command = msg.text;
+
+  logUserActivity(userId, username, `Command executed: ${command}`);
+
+  // Handle commands normally...
+});
+
+// Example usage: Logging user messages
+bot.on('message', (msg) => {
+  if (msg.text) {
+    const userId = msg.from.id;
+    const username = msg.from.username || null;
+    const message = msg.text;
+
+    logUserActivity(userId, username, `Sent message: ${message}`);
+  }
+
+  // Handle other message logic...
+});
+
+// Example usage: Logging file uploads
+bot.on('document', (msg) => {
+  const userId = msg.from.id;
+  const username = msg.from.username || null;
+  const fileName = msg.document.file_name;
+
+  logUserActivity(userId, username, `Uploaded file: ${fileName}`);
+
+  // Handle file upload logic...
+});
+
+// Function to add a user to cloudUsers.json
+const addCloudUser = (user) => {
+  let cloudUsers = [];
+
+  // Read existing users from the file
+  if (fs.existsSync(cloudUsersFilePath)) {
+    try {
+      cloudUsers = JSON.parse(fs.readFileSync(cloudUsersFilePath, 'utf8')) || [];
+    } catch (error) {
+      console.error('Error reading or parsing cloud user file:', error);
+    }
+  }
+
+  // Check if the user already exists
+  const userExists = cloudUsers.some((u) => u.id === user.id);
+  if (!userExists) {
+    cloudUsers.push(user);
+
+    // Save updated list back to the file
+    fs.writeFileSync(cloudUsersFilePath, JSON.stringify(cloudUsers, null, 2), 'utf8');
+  }
+};
+
+// Command to handle /cloudusers
+registerCommand(/\/cloudusers/, (msg) => {
+  restrictAdminCommand(msg, () => {
+    const chatId = msg.chat.id;
+
+    // Check if the cloudUsers file exists
+    if (!fs.existsSync(cloudUsersFilePath)) {
+      bot.sendMessage(chatId, 'No users have been added yet.');
+      return;
+    }
+
+    // Read the cloud users from the file
+    let cloudUsers = [];
+    try {
+      cloudUsers = JSON.parse(fs.readFileSync(cloudUsersFilePath, 'utf8')) || [];
+    } catch (error) {
+      console.error('Error reading or parsing cloud user file:', error);
+      bot.sendMessage(chatId, 'An error occurred while retrieving the cloud user list.');
+      return;
+    }
+
+    // If there are no users, send a message
+    if (cloudUsers.length === 0) {
+      bot.sendMessage(chatId, 'No users have been added yet.');
+      return;
+    }
+
+    // Format the user data into a readable message
+    const userListMessage = cloudUsers
+      .map((user, index) => {
+        const username = user.username
+          ? `[@${user.username}](tg://user?id=${user.id})`
+          : `[User ID: ${user.id}](tg://user?id=${user.id})`;
+        return `${index + 1}. ${username}`;
+      })
+      .join('\n');
+
+    // Send the list of cloud users
+    bot.sendMessage(chatId, `Cloud Users:\n\n${userListMessage}`, { parse_mode: 'Markdown' });
+  });
+});
+
+// Track users who use the bot
+bot.on('message', (msg) => {
+  const user = {
+    id: msg.from.id,
+    username: msg.from.username || null, // Save username if available
+  };
+
+  // Add the user to the cloudUsers list
+  addCloudUser(user);
+
+  // Handle other message logic if needed...
 });
 
 // Handle /status command

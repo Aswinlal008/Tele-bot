@@ -9,6 +9,7 @@ const storageFilePath = './storage.json';
 const botActionsLogFilePath = './bot_actions.log'; // Renamed
 const userActivityLogFilePath = './userActivityLogs.json'; // Path to the user activity log file
 const cloudUsersFilePath = './cloudUsers.json'; // Path to store cloud user IDs
+const userRatingsFilePath = './userRatings.json'; // File to store user ratings
 
 // Read storage file
 function readStorage() {
@@ -56,6 +57,11 @@ const bot = new TelegramBot(token, { polling: true });
 const fileStore = readStorage();
 let batchToken = null;
 
+// Ensure the JSON file exists
+if (!fs.existsSync(userRatingsFilePath)) {
+  fs.writeFileSync(userRatingsFilePath, JSON.stringify([])); // Initialize as an empty array
+}
+
 // Helper function to check if the user is an admin
 function isAdmin(msg) {
   return msg.from.id === adminUserId;
@@ -81,78 +87,71 @@ function registerCommand(command, callback) {
   }
 }
 
+
 // Handle /start command
 registerCommand(/\/start(.*)/, (msg, match) => {
   const chatId = msg.chat.id;
   const token = match[1].trim();
 
-  // If no token is provided, send a welcome message with a contact button and join group link
   if (!token) {
     const welcomeMessage = 'Welcome to the bot! Please provide a valid token to access files.';
-    
-    // Send the welcome message
-    bot.sendMessage(chatId, welcomeMessage);
-  
-    // Send the sticker
     const stickerId = 'CAACAgIAAxkBAAIFemdiZIFpueSalCmgqs1SEwEc1o51AAJUAANBtVYMarf4xwiNAfo2BA'; // Sticker file_id
+
     bot.sendSticker(chatId, stickerId);
-   
-    // Creating an inline keyboard with contact and join group buttons
-    const joinGroupButton = {
-      text: 'Our Channel',
-      url: 'https://t.me/Discussionclouds' // Replace with your channel or group link
-    };
-
-    const contactButton = {
-      text: 'Contact Support',
-      url: 'https://t.me/aswinlalus' // Replace with your contact link or support link
-    };
-    
-    const inlineKeyboard = {
-      inline_keyboard: [
-        [joinGroupButton], 
-        [contactButton]
-      ]
-    };
-
     bot.sendMessage(chatId, welcomeMessage, {
-      reply_markup: inlineKeyboard
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: 'Our Channel', url: 'https://t.me/Discussionclouds' }],
+          [{ text: 'Contact Support', url: 'https://t.me/aswinlalus' }]
+        ]
+      }
     });
     return;
   }
 
-  // If a token is provided
   if (token && fileStore[token]) {
     const fileData = fileStore[token];
 
     if (fileData.files && fileData.files.length > 0) {
-      // Sort the files (optional: already stored sequentially in the array)
-      const sortedFiles = fileData.files;
-
-      // Send files sequentially in order
       (async () => {
-        for (const file of sortedFiles) {
+        for (const file of fileData.files) {
           try {
-            await bot.sendDocument(chatId, file.fileId, {
-              caption: file.fileName
-            });
+            await bot.sendDocument(chatId, file.fileId, { caption: file.fileName });
           } catch (error) {
             console.error(`Error sending file ${file.fileId}:`, error);
             await bot.sendMessage(chatId, `Failed to send file: ${file.fileName}`);
           }
         }
       })()
-      .then(() => {
-        // Sending the "thank you" sticker
-        bot.sendSticker(chatId, 'CAACAgIAAyEFAASIw5s0AAINuGdiYcH47KUxG6Ew1d6ibfa9qcMNAAJRAANBtVYM-ugutyIO5ug2BA')  // Replace 'STICKER_ID_HERE' with the actual sticker ID
-          .then(() => {
-            // Sending the "thank you" message
-            bot.sendMessage(chatId, 'Thank you for using the bot!');
+        .then(() => {
+          bot.sendSticker(chatId, 'CAACAgIAAyEFAASIw5s0AAINuGdiYcH47KUxG6Ew1d6ibfa9qcMNAAJRAANBtVYM-ugutyIO5ug2BA');
+          bot.sendMessage(chatId, 'Thank you for using the bot!');
+          bot.sendMessage(chatId, 'How would you rate your experience with the bot?', {
+            reply_markup: {
+              inline_keyboard: [
+                [
+                  { text: '1️⃣', callback_data: 'rate_1' },
+                  { text: '2️⃣', callback_data: 'rate_2' },
+                  { text: '3️⃣', callback_data: 'rate_3' },
+                  { text: '4️⃣', callback_data: 'rate_4' },
+                  { text: '5️⃣', callback_data: 'rate_5' }
+                ],
+                [
+                  { text: '6️⃣', callback_data: 'rate_6' },
+                  { text: '7️⃣', callback_data: 'rate_7' },
+                  { text: '8️⃣', callback_data: 'rate_8' },
+                  { text: '9️⃣', callback_data: 'rate_9' },
+                  { text: '🔟', callback_data: 'rate_10' }
+                ]
+              ]
+            }
           });
-      })
-      .catch(() => bot.sendMessage(chatId, 'Some files couldn\'t be sent.'));
+        })
+        .catch((error) => {
+          console.error('Error after sending files:', error);
+          bot.sendMessage(chatId, 'Some files couldn\'t be sent.');
+        });
     } else if (fileData.fileId) {
-      // If a single file
       bot.sendDocument(chatId, fileData.fileId)
         .then(() => bot.sendMessage(chatId, 'Here is your requested file!'))
         .catch((error) => {
@@ -164,6 +163,54 @@ registerCommand(/\/start(.*)/, (msg, match) => {
     }
   } else {
     bot.sendMessage(chatId, 'Invalid token! No file or batch found.');
+  }
+});
+
+// Handle ratings callback
+bot.on('callback_query', (callbackQuery) => {
+  const chatId = callbackQuery.message.chat.id;
+  const data = callbackQuery.data;
+
+  if (data.startsWith('rate_')) {
+    const rating = parseInt(data.split('_')[1], 10);
+
+    if (rating >= 1 && rating <= 10) {
+      const ratingEmojis = ['😭', '😢', '🥺', '😕', '😐', '🙂', '😉', '😌', '😘', '😍'];
+      const emoji = ratingEmojis[rating - 1];
+
+      const userId = callbackQuery.from.id;
+      const username = callbackQuery.from.username || null;
+
+      // Read ratings
+      let userRatings;
+      try {
+        userRatings = JSON.parse(fs.readFileSync(userRatingsFilePath, 'utf8'));
+      } catch (error) {
+        console.error('Error reading ratings file:', error);
+        userRatings = [];
+      }
+
+      // Update or add the rating
+      const existingUserIndex = userRatings.findIndex((entry) => entry.userId === userId);
+      if (existingUserIndex !== -1) {
+        userRatings[existingUserIndex].rating = rating;
+      } else {
+        userRatings.push({ userId, username, rating });
+      }
+
+      // Save updated ratings
+      try {
+        fs.writeFileSync(userRatingsFilePath, JSON.stringify(userRatings, null, 2));
+      } catch (error) {
+        console.error('Error saving ratings file:', error);
+      }
+
+      bot.sendMessage(chatId, `Thank you for rating us ${rating} out of 10! ${emoji}`);
+    } else {
+      bot.sendMessage(chatId, 'Invalid rating. Please try again.');
+    }
+
+    bot.answerCallbackQuery(callbackQuery.id);
   }
 });
 
@@ -191,6 +238,7 @@ registerCommand(/\/helpadmin/, (msg) => {
   \n/exportfiles - Generate and download a file containing the details of all stored files or batches, including names, tokens, access links, types, sizes, and timestamps.
   \n/broadcast - Send a message to all users
   \n/useractivity - View a list of user activities (last 50 actions)
+  \n/viewrating - View the bot's average user rating
   \n/cloudusers - View the list of users who have interacted with the bot.`;
     bot.sendMessage(chatId, adminHelpMessage);
   });
@@ -551,6 +599,34 @@ registerCommand(/\/exportfiles/, (msg) => {
   });
 });
 
+// Handle /viewrating command
+registerCommand(/\/viewrating/, (msg) => {
+  const chatId = msg.chat.id;
+
+  // Read user ratings from the file
+  let userRatings;
+  try {
+    userRatings = JSON.parse(fs.readFileSync(userRatingsFilePath, 'utf8'));
+  } catch (error) {
+    console.error('Error reading ratings file:', error);
+    bot.sendMessage(chatId, 'Could not fetch ratings at the moment. Please try again later.');
+    return;
+  }
+
+  // Check if there are ratings
+  if (userRatings.length === 0) {
+    bot.sendMessage(chatId, 'No ratings have been submitted yet.');
+    return;
+  }
+
+  // Calculate the average rating
+  const totalRating = userRatings.reduce((sum, entry) => sum + parseInt(entry.rating, 10), 0);
+  const averageRating = (totalRating / userRatings.length).toFixed(2);
+
+  // Send the average rating to the user
+  bot.sendMessage(chatId, `The bot's average rating is: ${averageRating} / 10 🌟`);
+});
+
 // Handle /files command
 registerCommand(/\/files/, (msg) => {
   restrictAdminCommand(msg, () => {
@@ -571,14 +647,42 @@ registerCommand(/\/files/, (msg) => {
       const accessLink = `https://t.me/${botUsername}?start=${token}`;
       
       // Add each file info in the required format with bold file name and clickable access link
-      fileList += `${index + 1}. *${fileName}* - [Access Link](${accessLink})\n`;
+      fileList += `**${index + 1}. ${fileName} - [Access Link](${accessLink})**\n`;
     });
 
-    // Send the list of files to the admin with Markdown formatting enabled
-    bot.sendMessage(chatId, `Stored files:\n\n${fileList}`, { parse_mode: 'Markdown' });
+    // Create inline keyboard with a "Copy" button
+    const inlineKeyboard = {
+      inline_keyboard: [
+        [
+          { text: 'Copy', callback_data: 'copy_files' } // Callback for copy action
+        ]
+      ]
+    };
+
+    // Send the list of files with Markdown formatting enabled and the inline keyboard
+    bot.sendMessage(chatId, `Stored files:\n\n${fileList}`, {
+      parse_mode: 'Markdown',
+      reply_markup: inlineKeyboard,
+    });
   });
 });
 
+// Handle Copy Inline Button
+bot.on('callback_query', (callbackQuery) => {
+  const action = callbackQuery.data;
+  const chatId = callbackQuery.message.chat.id;
+  const messageId = callbackQuery.message.message_id;
+
+  if (action === 'copy_files') {
+    // Send a preview message that users can manually copy
+    bot.sendMessage(chatId, 'You can copy the file list from the message above.', {
+      reply_to_message_id: messageId,
+    });
+  }
+
+  // Acknowledge the callback query to remove "loading" animation
+  bot.answerCallbackQuery(callbackQuery.id);
+});
 
 // Store user chat IDs (for example, dynamically collected when users interact with the bot)
 let registeredUsers = []; // Replace with your actual user database or array

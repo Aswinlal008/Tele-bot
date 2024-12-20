@@ -34,3 +34,57 @@ bot.on('message', (msg) => {
     bot.sendMessage(msg.chat.id, `Sticker ID: ${msg.sticker.file_id}`);
   }
 });
+
+// Store the most recent message for copying purpose
+let lastMessage = null;
+
+// Listening to all messages
+bot.on('message', (msg) => {
+  // Store the message (preserve formatting)
+  lastMessage = msg;
+});
+
+// Handle /copy command to copy the last message
+bot.onText(/\/copy/, (msg) => {
+  const chatId = msg.chat.id;
+
+  if (lastMessage) {
+    // Check if the last message contains text
+    if (lastMessage.text) {
+      // Copy the last message with text formatting
+      bot.sendMessage(chatId, lastMessage.text, { parse_mode: 'Markdown' })  // or 'HTML'
+        .then(() => {
+          console.log('Message copied successfully!');
+        })
+        .catch((err) => {
+          console.error('Error sending copied message:', err);
+        });
+    }
+    // If the last message contains a document (file), forward it
+    else if (lastMessage.document) {
+      bot.sendDocument(chatId, lastMessage.document.file_id)
+        .then(() => {
+          console.log('Document copied successfully!');
+        })
+        .catch((err) => {
+          console.error('Error sending copied document:', err);
+        });
+    }
+    // If the last message contains a sticker, forward it
+    else if (lastMessage.sticker) {
+      bot.sendSticker(chatId, lastMessage.sticker.file_id)
+        .then(() => {
+          console.log('Sticker copied successfully!');
+        })
+        .catch((err) => {
+          console.error('Error sending copied sticker:', err);
+        });
+    }
+    // Handle other types of messages (photos, videos, etc.)
+    else {
+      bot.sendMessage(chatId, "Cannot copy this type of message.");
+    }
+  } else {
+    bot.sendMessage(chatId, "No message to copy.");
+  }
+});

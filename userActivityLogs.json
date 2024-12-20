@@ -700,5 +700,995 @@
     "username": "aswinlalus",
     "action": "Sent message: Test message",
     "time": "2024-12-18T07:34:10.850Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Sent message: /start",
+    "time": "2024-12-18T07:37:04.833Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Command executed: /start",
+    "time": "2024-12-18T07:37:04.875Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Sent message: /useractivity",
+    "time": "2024-12-18T07:37:14.742Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Command executed: /useractivity",
+    "time": "2024-12-18T07:37:14.979Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Sent message: /cloudusers",
+    "time": "2024-12-18T07:37:23.085Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Command executed: /cloudusers",
+    "time": "2024-12-18T07:37:23.112Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Sent message: /useractivity",
+    "time": "2024-12-18T08:20:50.803Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Command executed: /useractivity",
+    "time": "2024-12-18T08:20:50.863Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Sent message: /cloudusers",
+    "time": "2024-12-18T08:20:55.552Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Command executed: /cloudusers",
+    "time": "2024-12-18T08:20:55.568Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Sent message: /start",
+    "time": "2024-12-18T08:23:44.126Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Command executed: /start",
+    "time": "2024-12-18T08:23:44.179Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Sent message: /cloudusers",
+    "time": "2024-12-18T10:51:26.789Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Command executed: /cloudusers",
+    "time": "2024-12-18T10:51:26.861Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Sent message: /useractivity",
+    "time": "2024-12-18T10:51:35.276Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Command executed: /useractivity",
+    "time": "2024-12-18T10:51:35.335Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Sent message: /useractivity",
+    "time": "2024-12-18T13:30:29.738Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Command executed: /useractivity",
+    "time": "2024-12-18T13:30:29.842Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Sent message: /start",
+    "time": "2024-12-18T13:30:42.114Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Command executed: /start",
+    "time": "2024-12-18T13:30:42.162Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Sent message: /useractivity",
+    "time": "2024-12-18T13:30:44.840Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Command executed: /useractivity",
+    "time": "2024-12-18T13:30:44.901Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Sent message: /status",
+    "time": "2024-12-18T13:32:53.199Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Command executed: /status",
+    "time": "2024-12-18T13:32:53.225Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Sent message: /listfiles",
+    "time": "2024-12-18T13:32:57.078Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Command executed: /listfiles",
+    "time": "2024-12-18T13:32:57.140Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Sent message: /files",
+    "time": "2024-12-18T13:32:59.922Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Command executed: /files",
+    "time": "2024-12-18T13:32:59.965Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Sent message: /exportfiles",
+    "time": "2024-12-18T13:34:07.119Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Command executed: /exportfiles",
+    "time": "2024-12-18T13:34:07.353Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Sent message: /files",
+    "time": "2024-12-18T13:34:37.535Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Command executed: /files",
+    "time": "2024-12-18T13:34:37.583Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Sent message: /cancel",
+    "time": "2024-12-18T13:35:51.475Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Command executed: /cancel",
+    "time": "2024-12-18T13:35:51.496Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Sent message: /useractivity",
+    "time": "2024-12-18T13:35:57.745Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Command executed: /useractivity",
+    "time": "2024-12-18T13:35:57.772Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Sent message: /cloudusers",
+    "time": "2024-12-18T13:36:34.411Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Command executed: /cloudusers",
+    "time": "2024-12-18T13:36:34.430Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Sent message: /sendfile",
+    "time": "2024-12-18T13:44:19.448Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Command executed: /sendfile",
+    "time": "2024-12-18T13:44:19.512Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Sent message: Pallotty 90's Kids",
+    "time": "2024-12-18T13:44:37.488Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Uploaded file: Pallotty.90s.Kids.2024.MALAYALAM.720p.MMAX.WEB.DL.HEVC.DDP5..mkv",
+    "time": "2024-12-18T13:44:44.917Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Uploaded file: _Pallotty_90s_Kids_2024_MALAYALAM_1080p_MMAX_WEB_DL_HEVC_DDP5_1.mkv",
+    "time": "2024-12-18T13:44:44.968Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Uploaded file: Pallotty.90s.Kids.2024.HQ.1080p.MMAX.WEB.DL.H264.DDP5.1.192k.mkv",
+    "time": "2024-12-18T13:44:45.009Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Sent message: /files",
+    "time": "2024-12-18T13:45:17.461Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Command executed: /files",
+    "time": "2024-12-18T13:45:17.492Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Sent message: /start 5ff4ecb66942b706d57450f28a693c9b",
+    "time": "2024-12-18T13:46:00.619Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Command executed: /start 5ff4ecb66942b706d57450f28a693c9b",
+    "time": "2024-12-18T13:46:00.646Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Sent message: 🤬😍",
+    "time": "2024-12-18T13:50:21.467Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Sent message: /start 68237d528c6ae76e52db6bb2bc51ee7e",
+    "time": "2024-12-18T14:36:09.247Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Command executed: /start 68237d528c6ae76e52db6bb2bc51ee7e",
+    "time": "2024-12-18T14:36:09.289Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Sent message: /viewrating",
+    "time": "2024-12-18T14:36:20.016Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Command executed: /viewrating",
+    "time": "2024-12-18T14:36:20.056Z"
+  },
+  {
+    "userId": 1643052744,
+    "username": null,
+    "action": "Sent message: /start 68237d528c6ae76e52db6bb2bc51ee7e",
+    "time": "2024-12-18T15:18:18.806Z"
+  },
+  {
+    "userId": 1643052744,
+    "username": null,
+    "action": "Command executed: /start 68237d528c6ae76e52db6bb2bc51ee7e",
+    "time": "2024-12-18T15:18:18.927Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Sent message: /useractivity",
+    "time": "2024-12-18T16:13:38.598Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Command executed: /useractivity",
+    "time": "2024-12-18T16:13:38.888Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Sent message: /viewrating",
+    "time": "2024-12-18T16:14:16.874Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Command executed: /viewrating",
+    "time": "2024-12-18T16:14:16.899Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Sent message: /cloudusers",
+    "time": "2024-12-18T16:14:21.695Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Command executed: /cloudusers",
+    "time": "2024-12-18T16:14:21.717Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Sent message: /files",
+    "time": "2024-12-18T16:14:46.665Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Command executed: /files",
+    "time": "2024-12-18T16:14:46.696Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Sent message: /start 5ff4ecb66942b706d57450f28a693c9b",
+    "time": "2024-12-18T16:27:18.826Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Command executed: /start 5ff4ecb66942b706d57450f28a693c9b",
+    "time": "2024-12-18T16:27:18.860Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Sent message: /viewrating",
+    "time": "2024-12-18T16:28:34.714Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Command executed: /viewrating",
+    "time": "2024-12-18T16:28:34.739Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Sent message: /cloudusers",
+    "time": "2024-12-18T16:28:38.656Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Command executed: /cloudusers",
+    "time": "2024-12-18T16:28:38.667Z"
+  },
+  {
+    "userId": 590160772,
+    "username": null,
+    "action": "Sent message: /start 255843d0aaaef004a31260533dac1566",
+    "time": "2024-12-18T16:30:48.665Z"
+  },
+  {
+    "userId": 590160772,
+    "username": null,
+    "action": "Command executed: /start 255843d0aaaef004a31260533dac1566",
+    "time": "2024-12-18T16:30:48.715Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Sent message: /files",
+    "time": "2024-12-18T16:37:46.595Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Command executed: /files",
+    "time": "2024-12-18T16:37:46.644Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Sent message: /useractivity",
+    "time": "2024-12-18T16:37:58.303Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Command executed: /useractivity",
+    "time": "2024-12-18T16:37:58.458Z"
+  },
+  {
+    "userId": 1643052744,
+    "username": null,
+    "action": "Sent message: /start 6b19f6288d21afe53fb5603821c74723",
+    "time": "2024-12-18T17:08:08.260Z"
+  },
+  {
+    "userId": 1643052744,
+    "username": null,
+    "action": "Command executed: /start 6b19f6288d21afe53fb5603821c74723",
+    "time": "2024-12-18T17:08:08.333Z"
+  },
+  {
+    "userId": 1643052744,
+    "username": null,
+    "action": "Sent message: /start 74f147366e6482ae573af4cb644e0641",
+    "time": "2024-12-18T17:08:29.335Z"
+  },
+  {
+    "userId": 1643052744,
+    "username": null,
+    "action": "Command executed: /start 74f147366e6482ae573af4cb644e0641",
+    "time": "2024-12-18T17:08:29.366Z"
+  },
+  {
+    "userId": 1643052744,
+    "username": null,
+    "action": "Sent message: /start",
+    "time": "2024-12-18T17:08:46.652Z"
+  },
+  {
+    "userId": 1643052744,
+    "username": null,
+    "action": "Command executed: /start",
+    "time": "2024-12-18T17:08:46.705Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Sent message: /useractivity",
+    "time": "2024-12-18T17:56:54.472Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Command executed: /useractivity",
+    "time": "2024-12-18T17:56:54.583Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Sent message: /cloudusers",
+    "time": "2024-12-18T17:58:42.421Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Command executed: /cloudusers",
+    "time": "2024-12-18T17:58:42.443Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Sent message: /useractivity",
+    "time": "2024-12-19T02:37:53.699Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Command executed: /useractivity",
+    "time": "2024-12-19T02:37:53.801Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Sent message: /listfiles",
+    "time": "2024-12-19T02:38:16.754Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Command executed: /listfiles",
+    "time": "2024-12-19T02:38:16.795Z"
+  },
+  {
+    "userId": 1038806773,
+    "username": null,
+    "action": "Sent message: /start e2f04e87247b03571856629b74435ea1",
+    "time": "2024-12-19T03:37:56.488Z"
+  },
+  {
+    "userId": 1038806773,
+    "username": null,
+    "action": "Command executed: /start e2f04e87247b03571856629b74435ea1",
+    "time": "2024-12-19T03:37:56.598Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Sent message: /useractivity",
+    "time": "2024-12-19T04:04:51.765Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Command executed: /useractivity",
+    "time": "2024-12-19T04:04:51.923Z"
+  },
+  {
+    "userId": 5469789085,
+    "username": null,
+    "action": "Sent message: /start 5ff4ecb66942b706d57450f28a693c9b",
+    "time": "2024-12-19T04:06:04.367Z"
+  },
+  {
+    "userId": 5469789085,
+    "username": null,
+    "action": "Command executed: /start 5ff4ecb66942b706d57450f28a693c9b",
+    "time": "2024-12-19T04:06:04.373Z"
+  },
+  {
+    "userId": 5469789085,
+    "username": null,
+    "action": "Sent message: /start",
+    "time": "2024-12-19T04:06:20.124Z"
+  },
+  {
+    "userId": 5469789085,
+    "username": null,
+    "action": "Command executed: /start",
+    "time": "2024-12-19T04:06:20.126Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Sent message: /useractivity",
+    "time": "2024-12-19T04:06:33.496Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Command executed: /useractivity",
+    "time": "2024-12-19T04:06:33.501Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Sent message: /cloudusers",
+    "time": "2024-12-19T04:07:09.761Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Command executed: /cloudusers",
+    "time": "2024-12-19T04:07:09.763Z"
+  },
+  {
+    "userId": 5469789085,
+    "username": null,
+    "action": "Sent message: /start",
+    "time": "2024-12-19T04:08:39.114Z"
+  },
+  {
+    "userId": 5469789085,
+    "username": null,
+    "action": "Command executed: /start",
+    "time": "2024-12-19T04:08:39.215Z"
+  },
+  {
+    "userId": 5469789085,
+    "username": null,
+    "action": "Sent message: /start",
+    "time": "2024-12-19T04:08:59.360Z"
+  },
+  {
+    "userId": 5469789085,
+    "username": null,
+    "action": "Command executed: /start",
+    "time": "2024-12-19T04:08:59.475Z"
+  },
+  {
+    "userId": 5469789085,
+    "username": null,
+    "action": "Sent message: /helpadmin",
+    "time": "2024-12-19T04:09:13.745Z"
+  },
+  {
+    "userId": 5469789085,
+    "username": null,
+    "action": "Command executed: /helpadmin",
+    "time": "2024-12-19T04:09:13.749Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Sent message: /cloudusers",
+    "time": "2024-12-19T04:09:29.896Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Command executed: /cloudusers",
+    "time": "2024-12-19T04:09:29.899Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Sent message: /files",
+    "time": "2024-12-19T04:09:38.605Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Command executed: /files",
+    "time": "2024-12-19T04:09:38.610Z"
+  },
+  {
+    "userId": 5469789085,
+    "username": null,
+    "action": "Sent message: /start",
+    "time": "2024-12-19T04:11:05.554Z"
+  },
+  {
+    "userId": 5469789085,
+    "username": null,
+    "action": "Command executed: /start",
+    "time": "2024-12-19T04:11:05.559Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Sent message: /files",
+    "time": "2024-12-20T14:33:40.152Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Command executed: /files",
+    "time": "2024-12-20T14:33:40.292Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Sent message: /files",
+    "time": "2024-12-20T14:36:04.829Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Command executed: /files",
+    "time": "2024-12-20T14:36:05.133Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Sent message: /files",
+    "time": "2024-12-20T14:36:05.135Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Command executed: /files",
+    "time": "2024-12-20T14:36:05.138Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Sent message: /start",
+    "time": "2024-12-20T14:37:14.163Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Command executed: /start",
+    "time": "2024-12-20T14:37:14.169Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Sent message: /files",
+    "time": "2024-12-20T14:37:14.170Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Command executed: /files",
+    "time": "2024-12-20T14:37:14.173Z"
+  },
+  {
+    "userId": 1155544608,
+    "username": "laluttan",
+    "action": "Sent message: /start",
+    "time": "2024-12-20T14:37:46.000Z"
+  },
+  {
+    "userId": 1155544608,
+    "username": "laluttan",
+    "action": "Command executed: /start",
+    "time": "2024-12-20T14:37:46.005Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Sent message: /files",
+    "time": "2024-12-20T14:51:11.594Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Command executed: /files",
+    "time": "2024-12-20T14:51:11.736Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Sent message: /start 8148c865a2dfe897d9f099c103e71080",
+    "time": "2024-12-20T14:52:02.605Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Command executed: /start 8148c865a2dfe897d9f099c103e71080",
+    "time": "2024-12-20T14:52:02.707Z"
+  },
+  {
+    "userId": 1155544608,
+    "username": "laluttan",
+    "action": "Sent message: /start 8148c865a2dfe897d9f099c103e71080",
+    "time": "2024-12-20T14:52:17.132Z"
+  },
+  {
+    "userId": 1155544608,
+    "username": "laluttan",
+    "action": "Command executed: /start 8148c865a2dfe897d9f099c103e71080",
+    "time": "2024-12-20T14:52:17.157Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Sent message: /files",
+    "time": "2024-12-20T14:54:34.326Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Command executed: /files",
+    "time": "2024-12-20T14:54:34.644Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Sent message: /files",
+    "time": "2024-12-20T14:56:14.268Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Command executed: /files",
+    "time": "2024-12-20T14:56:14.382Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Sent message: /viewrating",
+    "time": "2024-12-20T14:56:49.120Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Command executed: /viewrating",
+    "time": "2024-12-20T14:56:49.432Z"
+  },
+  {
+    "userId": 7942920274,
+    "username": null,
+    "action": "Sent message: /start 2721259420c84906efc76c9ec8d24d8e",
+    "time": "2024-12-20T15:00:13.844Z"
+  },
+  {
+    "userId": 7942920274,
+    "username": null,
+    "action": "Command executed: /start 2721259420c84906efc76c9ec8d24d8e",
+    "time": "2024-12-20T15:00:15.426Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Sent message: /files",
+    "time": "2024-12-20T15:01:15.388Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Command executed: /files",
+    "time": "2024-12-20T15:01:15.398Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Sent message: /files",
+    "time": "2024-12-20T15:01:48.414Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Command executed: /files",
+    "time": "2024-12-20T15:01:48.419Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Sent message: /files",
+    "time": "2024-12-20T15:01:57.641Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Command executed: /files",
+    "time": "2024-12-20T15:01:57.646Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Sent message: /files",
+    "time": "2024-12-20T15:02:42.980Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Command executed: /files",
+    "time": "2024-12-20T15:02:42.987Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Sent message: /files",
+    "time": "2024-12-20T15:02:43.000Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Command executed: /files",
+    "time": "2024-12-20T15:02:43.108Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Sent message: /files",
+    "time": "2024-12-20T15:04:08.212Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Command executed: /files",
+    "time": "2024-12-20T15:04:08.320Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Sent message: /files",
+    "time": "2024-12-20T15:05:04.411Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Command executed: /files",
+    "time": "2024-12-20T15:05:04.418Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Sent message: /files",
+    "time": "2024-12-20T15:06:49.968Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Command executed: /files",
+    "time": "2024-12-20T15:06:49.974Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Sent message: /files",
+    "time": "2024-12-20T15:08:05.504Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Command executed: /files",
+    "time": "2024-12-20T15:08:05.672Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Sent message: /files",
+    "time": "2024-12-20T15:10:22.948Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Command executed: /files",
+    "time": "2024-12-20T15:10:22.963Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Sent message: /files",
+    "time": "2024-12-20T15:11:21.598Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Command executed: /files",
+    "time": "2024-12-20T15:11:21.603Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Sent message: /files",
+    "time": "2024-12-20T15:11:54.965Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Command executed: /files",
+    "time": "2024-12-20T15:11:54.970Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Sent message: /files",
+    "time": "2024-12-20T15:16:19.015Z"
+  },
+  {
+    "userId": 803543058,
+    "username": "aswinlalus",
+    "action": "Command executed: /files",
+    "time": "2024-12-20T15:16:20.620Z"
   }
 ]
